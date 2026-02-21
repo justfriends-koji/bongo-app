@@ -3,103 +3,94 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Perfect Bongo</title>
+    <title>Fixed Bongo</title>
     <style>
+        /* 画面全体を「絶対に動かない箱」にする */
         html, body { 
-            height: 100%; 
-            margin: 0; 
-            padding: 0; 
+            position: fixed; 
+            top: 0; left: 0; width: 100%; height: 100%;
+            margin: 0; padding: 0; 
             background: #332211; 
             overflow: hidden; 
-            /* タッチ操作のブラウザ標準動作をすべて禁止 */
-            touch-action: none;
+            touch-action: none; /* 全方向のスクロール・ズームを禁止 */
         }
         body { 
-            display: flex; 
-            flex-direction: column; 
-            align-items: center; 
-            justify-content: center; 
-            color: #fdf5e6; 
-            font-family: sans-serif; 
-            user-select: none;
-            -webkit-user-select: none;
-            /* タップ時の青い枠を消す */
+            display: flex; flex-direction: column; align-items: center; justify-content: center; 
+            color: #fdf5e6; font-family: sans-serif; 
+            user-select: none; -webkit-user-select: none;
             -webkit-tap-highlight-color: transparent;
         }
-        h1 { font-size: 24px; color: #d2b48c; margin-bottom: 30px; pointer-events: none; }
-        .bongo-container { display: flex; justify-content: center; gap: 20px; align-items: flex-end; }
+        h1 { font-size: 22px; color: #d2b48c; margin-bottom: 20px; pointer-events: none; }
+        
+        .bongo-container { 
+            display: flex; justify-content: center; align-items: center; gap: 20px; 
+            width: 100%; height: 200px;
+        }
         .drum {
-            width: 140px; height: 140px; border-radius: 50%;
+            width: 130px; height: 130px; border-radius: 50%;
             background: radial-gradient(circle, #ecd8a5 30%, #8b4513 100%);
             border: 8px solid #221100; box-shadow: 0 10px 0 #110800;
             display: flex; align-items: center; justify-content: center;
-            font-weight: bold; font-size: 18px; color: rgba(0,0,0,0.4);
+            font-weight: bold; font-size: 16px; color: rgba(0,0,0,0.4);
+            /* タッチの反応を最優先にする */
+            touch-action: none;
         }
         .drum:active { transform: translateY(6px); box-shadow: 0 4px 0 #110800; }
-        .small { width: 110px; height: 110px; }
-        
+        .small { width: 100px; height: 100px; }
+
+        /* スタート画面 */
         #start-overlay { 
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
-            background: #332211; display: flex; align-items: center; justify-content: center; z-index: 999; 
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
+            background: #332211; display: flex; align-items: center; justify-content: center; z-index: 1000; 
         }
         #start-button { 
-            padding: 25px 50px; font-size: 22px; font-weight: bold; 
+            padding: 20px 40px; font-size: 20px; font-weight: bold; 
             background: #d2b48c; border: none; border-radius: 15px; color: #332211;
-            box-shadow: 0 5px 0 #8b4513;
         }
     </style>
 </head>
 <body>
 
-    <div id="start-overlay" onpointerdown="enableAudio(event)">
-        <button id="start-button">タップして開始！</button>
+    <div id="start-overlay">
+        <button id="start-button" onpointerdown="enableAudio(event)">タップして開始</button>
     </div>
 
-    <h1>🪘 PERFECT BONGO 🪘</h1>
+    <h1>🪘 REAL BONGO 🪘</h1>
     
     <div class="bongo-container">
-        <div class="drum small" onpointerdown="playBongo(800)">HIGH</div>
-        <div class="drum" onpointerdown="playBongo(200)">LOW</div>
+        <div class="drum small" onpointerdown="playBongo(800, event)">HIGH</div>
+        <div class="drum" onpointerdown="playBongo(200, event)">LOW</div>
     </div>
 
     <script>
         let audioCtx = null;
 
-        function enableAudio(event) {
-            // ズームなどの標準動作を強制停止
-            event.preventDefault();
-            
+        function enableAudio(e) {
+            e.preventDefault(); // これがズレを止める鍵
             audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            if (audioCtx.state === 'suspended') audioCtx.resume();
-            
             document.getElementById('start-overlay').style.display = 'none';
         }
 
-        function playBongo(frequency) {
+        function playBongo(frequency, e) {
+            if (e) e.preventDefault(); // 叩いた瞬間の「ズレ」を強制防止
             if (!audioCtx) return;
-            
-            // 連続再生でも音が重なるように、毎回ノードを作成
+
             const osc = audioCtx.createOscillator();
             const gain = audioCtx.createGain();
-
             osc.type = 'triangle';
             osc.frequency.setValueAtTime(frequency, audioCtx.currentTime);
             osc.frequency.exponentialRampToValueAtTime(frequency / 2, audioCtx.currentTime + 0.1);
-
             gain.gain.setValueAtTime(0.5, audioCtx.currentTime);
             gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
-
             osc.connect(gain);
             gain.connect(audioCtx.destination);
-
             osc.start();
             osc.stop(audioCtx.currentTime + 0.1);
         }
 
-        // 念のため、ドキュメント全体での2本指以上の操作（ズーム）も禁止
-        document.addEventListener('touchstart', (e) => {
-            if (e.touches.length > 1) e.preventDefault();
-        }, { passive: false });
+        // 画面のどこを触っても「ズレ」を許さない
+        window.addEventListener('touchstart', (e) => e.preventDefault(), { passive: false });
+        window.addEventListener('touchmove', (e) => e.preventDefault(), { passive: false });
     </script>
 </body>
 </html>
