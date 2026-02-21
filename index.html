@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Realistic Bongo</title>
+    <title>Organic Bongo</title>
     <style>
         html, body { 
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
@@ -17,22 +17,22 @@
         .bongo-container { display: flex; justify-content: center; align-items: center; gap: 30px; }
         .drum {
             position: relative; border-radius: 50%;
-            background: radial-gradient(circle, #d2b48c 20%, #8b4513 100%);
-            border: 12px solid #333; box-shadow: 0 10px 0 #000;
+            background: radial-gradient(circle, #d2b48c 20%, #5d2e0c 100%);
+            border: 10px solid #222; box-shadow: 0 10px 0 #000;
             display: flex; align-items: center; justify-content: center;
             touch-action: none;
         }
         .drum:active { transform: translateY(6px); box-shadow: 0 4px 0 #000; }
-        .center-zone { width: 60%; height: 60%; border-radius: 50%; background: rgba(0,0,0,0.05); border: 1px dashed rgba(255,255,255,0.1); }
+        .center-zone { width: 65%; height: 65%; border-radius: 50%; background: rgba(0,0,0,0.05); border: 1px dashed rgba(255,255,255,0.05); }
         .large { width: 160px; height: 160px; }
         .small { width: 130px; height: 130px; }
         #start-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #1a0a00; display: flex; align-items: center; justify-content: center; z-index: 1000; }
-        #start-button { padding: 25px 50px; font-size: 20px; font-weight: bold; background: #d2b48c; border: none; border-radius: 15px; }
+        #start-button { padding: 25px 50px; font-size: 20px; font-weight: bold; background: #d2b48c; border: none; border-radius: 15px; color: #1a0a00; }
     </style>
 </head>
 <body>
     <div id="start-overlay" onpointerdown="enableAudio(event)">
-        <button id="start-button">本物の音で開始</button>
+        <button id="start-button">リアルな音を生成して開始</button>
     </div>
     <div class="bongo-container">
         <div class="drum small" onpointerdown="handleTap(event, 'high')"><div class="center-zone"></div></div>
@@ -53,53 +53,59 @@
             const x = e.clientX - rect.left - rect.width / 2;
             const y = e.clientY - rect.top - rect.height / 2;
             const distance = Math.sqrt(x*x + y*y);
-            const isCenter = distance < (rect.width / 2) * 0.55;
+            const isCenter = distance < (rect.width / 2) * 0.65;
 
-            // 楽器の特性（高い太鼓/低い太鼓 × 端/中心）
-            const baseFreq = (drumType === 'high') ? 450 : 180;
-            const freqMult = isCenter ? 1.0 : 1.8;
-            const decay = isCenter ? 0.2 : 0.08;
-            const slapVolume = isCenter ? 0.2 : 0.6;
+            // リアルなドラムの響きを作るパラメータ
+            const params = {
+                high: { base: 440, centerMod: 0.8, edgeMod: 1.6, decay: 0.15 },
+                low: { base: 180, centerMod: 0.7, edgeMod: 1.4, decay: 0.25 }
+            }[drumType];
 
-            playBongoSound(baseFreq * freqMult, decay, slapVolume);
+            const freq = isCenter ? params.base * params.centerMod : params.base * params.edgeMod;
+            const decay = isCenter ? params.decay : params.decay * 0.5;
+            const harmonic = isCenter ? 1.5 : 2.7; // 倍音の混ざり具合
+
+            playOrganicDrum(freq, decay, harmonic, isCenter);
         }
 
-        function playBongoSound(freq, decay, slapVol) {
+        function playOrganicDrum(freq, decay, harmonic, isCenter) {
             const now = audioCtx.currentTime;
             
-            // 1. 基音（太鼓の鳴り）
+            // 1. 基音（革の揺れ）
             const osc = audioCtx.createOscillator();
             const gain = audioCtx.createGain();
-            osc.type = 'triangle';
+            osc.type = 'sine'; // 芯のある音
             osc.frequency.setValueAtTime(freq, now);
-            osc.frequency.exponentialRampToValueAtTime(freq * 0.6, now + decay);
-            gain.gain.setValueAtTime(0.4, now);
+            osc.frequency.exponentialRampToValueAtTime(freq * 0.5, now + decay);
+            gain.gain.setValueAtTime(0.6, now);
             gain.gain.exponentialRampToValueAtTime(0.001, now + decay);
-            osc.connect(gain);
-            gain.connect(audioCtx.destination);
-            osc.start(); osc.stop(now + decay);
+            
+            // 2. モジュレーター（木胴の響き/濁りを作る）
+            const mod = audioCtx.createOscillator();
+            const modGain = audioCtx.createGain();
+            mod.type = 'triangle';
+            mod.frequency.setValueAtTime(freq * harmonic, now);
+            modGain.gain.setValueAtTime(freq * 0.5, now);
+            modGain.gain.exponentialRampToValueAtTime(0.001, now + decay);
+            
+            mod.connect(modGain);
+            modGain.connect(osc.frequency); // 音を震わせる
 
-            // 2. 革の「カッ」という乾いたアタック音（ノイズ）
-            const bufferSize = audioCtx.sampleRate * 0.05;
-            const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
-            const data = buffer.getChannelData(0);
-            for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
-            
-            const noise = audioCtx.createBufferSource();
-            const noiseGain = audioCtx.createGain();
-            const filter = audioCtx.createBiquadFilter();
-            
-            noise.buffer = buffer;
-            filter.type = 'highpass';
-            filter.frequency.value = 1000; // 乾いた音にするためのフィルター
-            
-            noiseGain.gain.setValueAtTime(slapVol, now);
-            noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.03);
-            
-            noise.connect(filter);
-            filter.connect(noiseGain);
-            noiseGain.connect(audioCtx.destination);
-            noise.start();
+            // 3. アタック音（指が当たる「パシッ」という瞬間）
+            const snap = audioCtx.createOscillator();
+            const snapGain = audioCtx.createGain();
+            snap.type = 'square';
+            snap.frequency.setValueAtTime(1000, now);
+            snapGain.gain.setValueAtTime(isCenter ? 0.05 : 0.2, now);
+            snapGain.gain.exponentialRampToValueAtTime(0.001, now + 0.02);
+
+            osc.connect(gain);
+            snap.connect(snapGain);
+            gain.connect(audioCtx.destination);
+            snapGain.connect(audioCtx.destination);
+
+            osc.start(); mod.start(); snap.start();
+            osc.stop(now + decay); mod.stop(now + decay); snap.stop(now + 0.02);
         }
         window.addEventListener('touchstart', (e) => e.preventDefault(), { passive: false });
     </script>
