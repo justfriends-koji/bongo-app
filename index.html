@@ -2,16 +2,16 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Perfect Bongo</title>
     <style>
-        /* 画面が崩れないよう、高さを固定して調整 */
         html, body { 
             height: 100%; 
             margin: 0; 
             padding: 0; 
             background: #332211; 
             overflow: hidden; 
+            /* タッチ操作のブラウザ標準動作をすべて禁止 */
             touch-action: none;
         }
         body { 
@@ -23,8 +23,10 @@
             font-family: sans-serif; 
             user-select: none;
             -webkit-user-select: none;
+            /* タップ時の青い枠を消す */
+            -webkit-tap-highlight-color: transparent;
         }
-        h1 { font-size: 24px; color: #d2b48c; margin-bottom: 30px; }
+        h1 { font-size: 24px; color: #d2b48c; margin-bottom: 30px; pointer-events: none; }
         .bongo-container { display: flex; justify-content: center; gap: 20px; align-items: flex-end; }
         .drum {
             width: 140px; height: 140px; border-radius: 50%;
@@ -32,12 +34,10 @@
             border: 8px solid #221100; box-shadow: 0 10px 0 #110800;
             display: flex; align-items: center; justify-content: center;
             font-weight: bold; font-size: 18px; color: rgba(0,0,0,0.4);
-            -webkit-tap-highlight-color: transparent; 
         }
         .drum:active { transform: translateY(6px); box-shadow: 0 4px 0 #110800; }
         .small { width: 110px; height: 110px; }
         
-        /* スタート画面を絶対に見える位置に固定 */
         #start-overlay { 
             position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
             background: #332211; display: flex; align-items: center; justify-content: center; z-index: 999; 
@@ -51,8 +51,8 @@
 </head>
 <body>
 
-    <div id="start-overlay">
-        <button id="start-button" onclick="enableAudio()">タップして開始！</button>
+    <div id="start-overlay" onpointerdown="enableAudio(event)">
+        <button id="start-button">タップして開始！</button>
     </div>
 
     <h1>🪘 PERFECT BONGO 🪘</h1>
@@ -65,18 +65,20 @@
     <script>
         let audioCtx = null;
 
-        function enableAudio() {
-            // ここで音の準備をする（iPhoneの制限解除）
+        function enableAudio(event) {
+            // ズームなどの標準動作を強制停止
+            event.preventDefault();
+            
             audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             if (audioCtx.state === 'suspended') audioCtx.resume();
             
-            // スタート画面を消す
             document.getElementById('start-overlay').style.display = 'none';
         }
 
         function playBongo(frequency) {
             if (!audioCtx) return;
             
+            // 連続再生でも音が重なるように、毎回ノードを作成
             const osc = audioCtx.createOscillator();
             const gain = audioCtx.createGain();
 
@@ -93,6 +95,11 @@
             osc.start();
             osc.stop(audioCtx.currentTime + 0.1);
         }
+
+        // 念のため、ドキュメント全体での2本指以上の操作（ズーム）も禁止
+        document.addEventListener('touchstart', (e) => {
+            if (e.touches.length > 1) e.preventDefault();
+        }, { passive: false });
     </script>
 </body>
 </html>
