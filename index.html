@@ -3,9 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Iron-Clad Bongo</title>
+    <title>Real Dry Bongo</title>
     <style>
-        /* 1. 画面全体の土台を「鉄板」にする */
         * { 
             touch-action: none !important; 
             -webkit-tap-highlight-color: transparent; 
@@ -16,66 +15,57 @@
             margin: 0; padding: 0; background: #1a0a00; overflow: hidden;
             overscroll-behavior: none;
         }
-
-        /* 2. ズレを封じ込めるためのコンテナ */
-        #stage {
-            position: absolute;
-            top: 0; left: 0; width: 100%; height: 100%;
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
+        body { 
+            display: flex; flex-direction: column; align-items: center; justify-content: center; 
+            user-select: none; -webkit-user-select: none;
         }
-
-        .bongo-container { 
-            display: flex; justify-content: center; align-items: center; gap: 30px; 
-            /* 画面端との干渉を防ぐため少し浮かせる */
-            padding: 20px;
-        }
-
+        .bongo-container { display: flex; justify-content: center; align-items: center; gap: 30px; padding: 20px; }
         .drum {
             position: relative; border-radius: 50%;
-            background: radial-gradient(circle, #e9d5a1 10%, #8b4513 100%);
+            background: radial-gradient(circle, #f3e5ab 5%, #8b4513 100%);
             border: 10px solid #2a1a0a; box-shadow: 0 10px 0 #000;
             display: flex; align-items: center; justify-content: center;
-            transition: transform 0.05s ease-out;
+            transition: transform 0.04s ease-out;
         }
-        .drum:active { transform: translateY(6px) scale(0.98); box-shadow: 0 4px 0 #000; }
-        .large { width: 160px; height: 160px; }
-        .small { width: 130px; height: 130px; }
+        .drum:active { transform: translateY(6px) scale(0.96); box-shadow: 0 4px 0 #000; }
+        .large { width: 170px; height: 170px; }
+        .small { width: 135px; height: 135px; }
 
-        #start-overlay { 
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
-            background: #1a0a00; display: flex; align-items: center; justify-content: center; z-index: 1000; 
-        }
+        #start-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #1a0a00; display: flex; align-items: center; justify-content: center; z-index: 1000; }
         #start-button { padding: 30px 60px; font-size: 24px; font-weight: bold; background: #d2b48c; border: none; border-radius: 15px; }
     </style>
 </head>
 <body>
     <div id="start-overlay">
-        <button id="start-button" onclick="init(event)">演奏開始</button>
+        <button id="start-button" onclick="init(event)">DRY BONGO START</button>
     </div>
-
-    <div id="stage">
-        <div class="bongo-container">
-            <div id="h" class="drum small"></div>
-            <div id="l" class="drum large"></div>
-        </div>
+    <div class="bongo-container">
+        <div id="h" class="drum small"></div>
+        <div id="l" class="drum large"></div>
     </div>
 
     <script>
         let ctx;
         let bufs = {};
 
-        function createBongoSample(freq, isLow) {
-            const len = ctx.sampleRate * 0.25;
+        function createDryBongo(freq, isLow) {
+            const len = ctx.sampleRate * 0.12; // さらに短くして乾いた音に
             const buf = ctx.createBuffer(1, len, ctx.sampleRate);
             const d = buf.getChannelData(0);
             for (let i = 0; i < len; i++) {
                 const t = i / ctx.sampleRate;
-                const env = Math.exp(-t * (isLow ? 15 : 25));
-                let val = Math.sin(2 * Math.PI * freq * t) * 0.6 +
-                          Math.sin(2 * Math.PI * freq * 1.58 * t) * 0.3;
-                if(isLow) val += Math.sin(2 * Math.PI * (freq/2) * t) * Math.exp(-t * 10) * 0.4;
-                const click = (Math.random() * 2 - 1) * Math.exp(-t * 100) * 0.5;
-                d[i] = (val + click) * env;
+                // 強烈な減衰（指数関数的に急激に音を小さくする）
+                const env = Math.exp(-t * (isLow ? 45 : 65));
+                
+                // 本物の革の響き（非整数倍音）
+                let val = Math.sin(2 * Math.PI * freq * t) * 0.6;
+                val += Math.sin(2 * Math.PI * freq * 1.63 * t) * 0.35;
+                val += Math.sin(2 * Math.PI * freq * 2.47 * t) * 0.2;
+                
+                // 指先の「パシッ」というスラップ音（高域ホワイトノイズ）
+                const slap = (Math.random() * 2 - 1) * Math.exp(-t * 200) * 0.8;
+                
+                d[i] = (val + slap) * env;
             }
             return buf;
         }
@@ -83,8 +73,8 @@
         function init(e) {
             e.preventDefault();
             ctx = new (window.AudioContext || window.webkitAudioContext)();
-            bufs.h = createBongoSample(520, false);
-            bufs.l = createBongoSample(180, true);
+            bufs.h = createDryBongo(550, false); // 高音スラップ
+            bufs.l = createDryBongo(190, true);  // 低音オープン
             document.getElementById('start-overlay').style.display = 'none';
         }
 
@@ -92,38 +82,27 @@
             if (!ctx) return;
             const s = ctx.createBufferSource();
             s.buffer = b;
-            s.playbackRate.value = 0.97 + Math.random() * 0.06;
+            s.playbackRate.value = 0.95 + Math.random() * 0.1; // 叩くたびに表情を変える
             s.connect(ctx.destination);
             s.start(0);
         }
 
-        // 3. iPhoneのズームの本能を「物理的」に封じる
-        const drums = [['h', 'h'], ['l', 'l']];
-        drums.forEach(([id, b]) => {
+        [['h', 'h'], ['l', 'l']].forEach(([id, b]) => {
             const el = document.getElementById(id);
             const handler = (e) => {
-                e.preventDefault(); // ここでSafariの「ズームしようかな？」という思考を遮断
-                e.stopPropagation(); // 親要素にタップを伝えない
+                e.preventDefault();
+                e.stopPropagation();
                 play(bufs[b]);
             };
-            // 複数のイベントを同時に封鎖
             el.addEventListener('touchstart', handler, { passive: false });
             el.addEventListener('pointerdown', handler, { passive: false });
         });
 
-        // 4. 「ダブルタップズーム」を物理的に無視する
         let lastT = 0;
         document.addEventListener('touchstart', e => {
             const now = Date.now();
-            if (now - lastT < 300 || e.touches.length > 1) {
-                e.preventDefault();
-            }
+            if (now - lastT < 300 || e.touches.length > 1) e.preventDefault();
             lastT = now;
-        }, { passive: false });
-
-        // 5. おまじない：スクロールを強制的に0位置で固定し続ける
-        window.addEventListener('scroll', () => {
-            if (window.scrollY !== 0) window.scrollTo(0, 0);
         }, { passive: false });
     </script>
 </body>
