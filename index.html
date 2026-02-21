@@ -29,17 +29,30 @@
     </div>
 
     <script>
-        // 音源の準備（フリーの打楽器音）
-        const sounds = {
-            high: new Audio('https://browser-sounds.s3.amazonaws.com/bongo_high.mp3'),
-            low: new Audio('https://browser-sounds.s3.amazonaws.com/bongo_low.mp3')
-        };
+    // 音源の準備
+    const sounds = {
+        high: new Audio('https://cdn.pixabay.com/audio/2022/03/10/audio_783d183c34.mp3'), // ハイポコ
+        low: new Audio('https://cdn.pixabay.com/audio/2022/03/10/audio_276063943a.mp3')   // ローポコ
+    };
 
-        function playSound(type) {
-            // スマホで音が遅れないための工夫
-            const sound = sounds[type].cloneNode();
-            sound.play();
+    // iPhoneのための「音出し許可」スイッチ
+    let isAudioEnabled = false;
+
+    function playSound(type) {
+        // 最初の1回目のタップで、iPhoneの音出し制限を解除する
+        if (!isAudioEnabled) {
+            for (let key in sounds) {
+                sounds[key].play();
+                sounds[key].pause();
+                sounds[key].currentTime = 0;
+            }
+            isAudioEnabled = true;
         }
-    </script>
+
+        // 音を鳴らす（連続タップに対応）
+        const sound = sounds[type].cloneNode();
+        sound.play().catch(e => console.log("音が出せませんでした:", e));
+    }
+</script>
 </body>
 </html>
