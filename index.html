@@ -3,107 +3,140 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Real Dry Bongo</title>
+    <title>Dub Sampler 9</title>
     <style>
-        * { 
-            touch-action: none !important; 
-            -webkit-tap-highlight-color: transparent; 
-            box-sizing: border-box;
-        }
-        html, body { 
-            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; 
-            margin: 0; padding: 0; background: #1a0a00; overflow: hidden;
-            overscroll-behavior: none;
-        }
-        body { 
-            display: flex; flex-direction: column; align-items: center; justify-content: center; 
-            user-select: none; -webkit-user-select: none;
-        }
-        .bongo-container { display: flex; justify-content: center; align-items: center; gap: 30px; padding: 20px; }
-        .drum {
-            position: relative; border-radius: 50%;
-            background: radial-gradient(circle, #f3e5ab 5%, #8b4513 100%);
-            border: 10px solid #2a1a0a; box-shadow: 0 10px 0 #000;
-            display: flex; align-items: center; justify-content: center;
-            transition: transform 0.04s ease-out;
-        }
-        .drum:active { transform: translateY(6px) scale(0.96); box-shadow: 0 4px 0 #000; }
-        .large { width: 170px; height: 170px; }
-        .small { width: 135px; height: 135px; }
+        * { touch-action: none !important; -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
+        html, body { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; margin: 0; padding: 0; background: #000; overflow: hidden; overscroll-behavior: none; }
+        body { display: flex; flex-direction: column; align-items: center; justify-content: center; color: #fff; font-family: 'Courier New', Courier, monospace; user-select: none; -webkit-user-select: none; }
+        
+        h1 { font-size: 18px; color: #0f0; margin-bottom: 20px; text-shadow: 0 0 5px #0f0; letter-spacing: 2px; }
 
-        #start-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #1a0a00; display: flex; align-items: center; justify-content: center; z-index: 1000; }
-        #start-button { padding: 30px 60px; font-size: 24px; font-weight: bold; background: #d2b48c; border: none; border-radius: 15px; }
+        /* 3x3 パッドレイアウト */
+        .pad-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            width: 90%;
+            max-width: 350px;
+        }
+
+        .pad {
+            aspect-ratio: 1 / 1;
+            background: #222;
+            border: 3px solid #444;
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            font-weight: bold;
+            color: #888;
+            transition: all 0.05s;
+        }
+
+        /* 叩いた時の演出 */
+        .pad:active {
+            transform: scale(0.95);
+            background: #0f0;
+            color: #000;
+            box-shadow: 0 0 15px #0f0;
+            border-color: #fff;
+        }
+
+        #start-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #000; display: flex; align-items: center; justify-content: center; z-index: 1000; }
+        #start-button { padding: 30px 60px; font-size: 20px; font-weight: bold; background: #0f0; border: none; border-radius: 5px; color: #000; box-shadow: 0 0 20px #0f0; }
     </style>
 </head>
 <body>
+
     <div id="start-overlay">
-        <button id="start-button" onclick="init(event)">DRY BONGO START</button>
+        <button id="start-button" onclick="init(event)">DUB STATION START</button>
     </div>
-    <div class="bongo-container">
-        <div id="h" class="drum small"></div>
-        <div id="l" class="drum large"></div>
+
+    <h1>DUB SOUND SYSTEM</h1>
+
+    <div class="pad-grid">
+        <div class="pad" data-sound="laser">LASER</div>
+        <div class="pad" data-sound="siren">SIREN</div>
+        <div class="pad" data-sound="ufo">UFO</div>
+        <div class="pad" data-sound="rim">RIM</div>
+        <div class="pad" data-sound="tom">LOW TOM</div>
+        <div class="pad" data-sound="clap">CLAP</div>
+        <div class="pad" data-sound="noise">NOISE</div>
+        <div class="pad" data-sound="drop">DROP</div>
+        <div class="pad" data-sound="dub">ECHO</div>
     </div>
 
     <script>
         let ctx;
-        let bufs = {};
-
-        function createDryBongo(freq, isLow) {
-            const len = ctx.sampleRate * 0.12; // さらに短くして乾いた音に
-            const buf = ctx.createBuffer(1, len, ctx.sampleRate);
-            const d = buf.getChannelData(0);
-            for (let i = 0; i < len; i++) {
-                const t = i / ctx.sampleRate;
-                // 強烈な減衰（指数関数的に急激に音を小さくする）
-                const env = Math.exp(-t * (isLow ? 45 : 65));
-                
-                // 本物の革の響き（非整数倍音）
-                let val = Math.sin(2 * Math.PI * freq * t) * 0.6;
-                val += Math.sin(2 * Math.PI * freq * 1.63 * t) * 0.35;
-                val += Math.sin(2 * Math.PI * freq * 2.47 * t) * 0.2;
-                
-                // 指先の「パシッ」というスラップ音（高域ホワイトノイズ）
-                const slap = (Math.random() * 2 - 1) * Math.exp(-t * 200) * 0.8;
-                
-                d[i] = (val + slap) * env;
-            }
-            return buf;
-        }
-
         function init(e) {
             e.preventDefault();
             ctx = new (window.AudioContext || window.webkitAudioContext)();
-            bufs.h = createDryBongo(550, false); // 高音スラップ
-            bufs.l = createDryBongo(190, true);  // 低音オープン
             document.getElementById('start-overlay').style.display = 'none';
         }
 
-        function play(b) {
+        // --- 乾いたダブ・サウンドを生成するエンジン ---
+        const playSound = (type) => {
             if (!ctx) return;
-            const s = ctx.createBufferSource();
-            s.buffer = b;
-            s.playbackRate.value = 0.95 + Math.random() * 0.1; // 叩くたびに表情を変える
-            s.connect(ctx.destination);
-            s.start(0);
-        }
-
-        [['h', 'h'], ['l', 'l']].forEach(([id, b]) => {
-            const el = document.getElementById(id);
-            const handler = (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                play(bufs[b]);
-            };
-            el.addEventListener('touchstart', handler, { passive: false });
-            el.addEventListener('pointerdown', handler, { passive: false });
-        });
-
-        let lastT = 0;
-        document.addEventListener('touchstart', e => {
-            const now = Date.now();
-            if (now - lastT < 300 || e.touches.length > 1) e.preventDefault();
-            lastT = now;
-        }, { passive: false });
-    </script>
-</body>
-</html>
+            const t = ctx.currentTime;
+            const g = ctx.createGain();
+            const osc = ctx.createOscillator();
+            
+            switch(type) {
+                case 'laser': // バキューン！
+                    osc.frequency.setValueAtTime(1200, t);
+                    osc.frequency.exponentialRampToValueAtTime(50, t + 0.2);
+                    g.gain.setValueAtTime(0.5, t);
+                    g.gain.exponentialRampToValueAtTime(0.01, t + 0.2);
+                    osc.start(); osc.stop(t + 0.2);
+                    break;
+                case 'siren': // ポワンッ！
+                    osc.frequency.setValueAtTime(400, t);
+                    osc.frequency.exponentialRampToValueAtTime(800, t + 0.1);
+                    osc.frequency.exponentialRampToValueAtTime(400, t + 0.2);
+                    g.gain.setValueAtTime(0.4, t);
+                    g.gain.exponentialRampToValueAtTime(0.01, t + 0.2);
+                    osc.start(); osc.stop(t + 0.2);
+                    break;
+                case 'ufo': // ギュイーン
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(100, t);
+                    osc.frequency.linearRampToValueAtTime(1000, t + 0.3);
+                    g.gain.setValueAtTime(0.3, t);
+                    g.gain.exponentialRampToValueAtTime(0.01, t + 0.3);
+                    osc.start(); osc.stop(t + 0.3);
+                    break;
+                case 'rim': // 乾いたリムショット
+                    const n = ctx.createOscillator();
+                    n.type = 'triangle';
+                    n.frequency.setValueAtTime(800, t);
+                    g.gain.setValueAtTime(0.5, t);
+                    g.gain.exponentialRampToValueAtTime(0.01, t + 0.05);
+                    n.connect(g); n.start(); n.stop(t + 0.05);
+                    break;
+                case 'tom': // 低いタム（ダブの基本）
+                    osc.frequency.setValueAtTime(150, t);
+                    osc.frequency.exponentialRampToValueAtTime(60, t + 0.2);
+                    g.gain.setValueAtTime(0.8, t);
+                    g.gain.exponentialRampToValueAtTime(0.01, t + 0.2);
+                    osc.start(); osc.stop(t + 0.2);
+                    break;
+                case 'clap': // 乾いたクラップ
+                    const buf = ctx.createBuffer(1, ctx.sampleRate * 0.1, ctx.sampleRate);
+                    const d = buf.getChannelData(0);
+                    for (let i = 0; i < buf.length; i++) d[i] = (Math.random() * 2 - 1) * Math.exp(-i / 1000);
+                    const src = ctx.createBufferSource();
+                    src.buffer = buf;
+                    src.connect(g); src.start();
+                    g.gain.setValueAtTime(0.6, t);
+                    g.gain.exponentialRampToValueAtTime(0.01, t + 0.1);
+                    break;
+                case 'noise': // ホワイトノイズ・スネア
+                    const b2 = ctx.createBuffer(1, ctx.sampleRate * 0.05, ctx.sampleRate);
+                    const d2 = b2.getChannelData(0);
+                    for (let i = 0; i < b2.length; i++) d2[i] = Math.random() * 2 - 1;
+                    const s2 = ctx.createBufferSource();
+                    s2.buffer = b2;
+                    s2.connect(g); s2.start();
+                    g.gain.setValueAt
