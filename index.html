@@ -3,95 +3,82 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Dynamic Tom-Tom</title>
+    <title>Real Sampled Bongo</title>
     <style>
         html, body { 
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            margin: 0; padding: 0; background: #0a0a0a; overflow: hidden; touch-action: none;
+            margin: 0; padding: 0; background: #1a0a00; overflow: hidden; touch-action: none;
         }
         body { 
             display: flex; flex-direction: column; align-items: center; justify-content: center; 
-            color: #eee; font-family: sans-serif; user-select: none; -webkit-user-select: none;
+            color: #fdf5e6; font-family: sans-serif; user-select: none; -webkit-user-select: none;
             -webkit-tap-highlight-color: transparent;
         }
-        .drum-set { display: flex; justify-content: center; align-items: center; gap: 30px; }
-        .tom {
+        .bongo-container { display: flex; justify-content: center; align-items: center; gap: 30px; }
+        .drum {
             position: relative; border-radius: 50%;
-            background: radial-gradient(circle, #444 0%, #111 100%);
-            border: 12px solid #888; box-shadow: 0 10px 0 #333;
+            background: radial-gradient(circle, #d2b48c 20%, #5d2e0c 100%);
+            border: 10px solid #222; box-shadow: 0 10px 0 #000;
             display: flex; align-items: center; justify-content: center;
             touch-action: none;
         }
-        .tom:active { transform: translateY(6px); box-shadow: 0 4px 0 #333; background: #222; }
-        .rim { width: 90%; height: 90%; border-radius: 50%; border: 1px solid rgba(255,255,255,0.1); }
-        .high-tom { width: 140px; height: 140px; }
-        .low-tom { width: 170px; height: 170px; }
-        #start-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #000; display: flex; align-items: center; justify-content: center; z-index: 1000; }
-        #start-button { padding: 25px 50px; font-size: 20px; font-weight: bold; background: #888; border: none; border-radius: 10px; color: #fff; }
+        .drum:active { transform: translateY(6px); box-shadow: 0 4px 0 #000; }
+        .large { width: 160px; height: 160px; }
+        .small { width: 130px; height: 130px; }
+        #start-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #1a0a00; display: flex; align-items: center; justify-content: center; z-index: 1000; }
+        #start-button { padding: 25px 50px; font-size: 20px; font-weight: bold; background: #d2b48c; border: none; border-radius: 15px; color: #1a0a00; }
     </style>
 </head>
 <body>
     <div id="start-overlay" onpointerdown="enableAudio(event)">
-        <button id="start-button">TOM-TOM START</button>
+        <button id="start-button">本物の音源を読み込んで開始</button>
     </div>
-    <div class="drum-set">
-        <div class="tom high-tom" onpointerdown="playTom(150, 0.4, event)"><div class="rim"></div></div>
-        <div class="tom low-tom" onpointerdown="playTom(90, 0.6, event)"><div class="rim"></div></div>
+    <div class="bongo-container">
+        <div class="drum small" onpointerdown="playSample('high', event)"></div>
+        <div class="drum large" onpointerdown="playSample('low', event)"></div>
     </div>
     <script>
         let audioCtx = null;
-        function enableAudio(e) {
+        const samples = {};
+
+        // 本物のボンゴのサンプリング音源（パブリックドメイン）
+        const sampleUrls = {
+            high: 'https://freesound.org/data/previews/244/244439_4452109-lq.mp3',
+            low: 'https://freesound.org/data/previews/244/244437_4452109-lq.mp3'
+        };
+
+        async function enableAudio(e) {
             e.preventDefault();
             audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            
+            // 音源をダウンロードしてデコード（準備）
+            for (let key in sampleUrls) {
+                const resp = await fetch(sampleUrls[key]);
+                const arrayBuffer = await resp.arrayBuffer();
+                samples[key] = await audioCtx.decodeAudioData(arrayBuffer);
+            }
+            
             document.getElementById('start-overlay').style.display = 'none';
         }
 
-        function playTom(baseFreq, decayTime, e) {
-            if (!audioCtx) return;
+        function playSample(key, e) {
             e.preventDefault();
-            const now = audioCtx.currentTime;
+            if (!audioCtx || !samples[key]) return;
 
-            // 1. 【アタック】叩いた瞬間の「カッ」という硬い音
-            const oscAttack = audioCtx.createOscillator();
-            const gainAttack = audioCtx.createGain();
-            oscAttack.type = 'sine';
-            oscAttack.frequency.setValueAtTime(baseFreq * 4, now);
-            oscAttack.frequency.exponentialRampToValueAtTime(baseFreq, now + 0.05);
-            gainAttack.gain.setValueAtTime(0.8, now);
-            gainAttack.gain.exponentialRampToValueAtTime(0.01, now + 0.05);
-            oscAttack.connect(gainAttack);
-            gainAttack.connect(audioCtx.destination);
+            // 再生ごとに新しいソースを作成（連打に対応）
+            const source = audioCtx.createBufferSource();
+            source.buffer = samples[key];
+            
+            // 音に少し変化をつける（よりリアルに）
+            source.playbackRate.value = 0.95 + Math.random() * 0.1;
 
-            // 2. 【ボディ】胴が鳴る「ドゥン」という低い響き
-            const oscBody = audioCtx.createOscillator();
-            const gainBody = audioCtx.createGain();
-            oscBody.type = 'triangle';
-            oscBody.frequency.setValueAtTime(baseFreq, now);
-            oscBody.frequency.exponentialRampToValueAtTime(baseFreq * 0.5, now + decayTime);
-            gainBody.gain.setValueAtTime(0.5, now);
-            gainBody.gain.exponentialRampToValueAtTime(0.001, now + decayTime);
-            oscBody.connect(gainBody);
-            gainBody.connect(audioCtx.destination);
+            const gain = audioCtx.createGain();
+            gain.gain.value = 0.8;
 
-            // 3. 【ノイズ】革の震えのザラつき
-            const bufferSize = audioCtx.sampleRate * 0.1;
-            const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
-            const data = buffer.getChannelData(0);
-            for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
-            const noise = audioCtx.createBufferSource();
-            const noiseGain = audioCtx.createGain();
-            const filter = audioCtx.createBiquadFilter();
-            noise.buffer = buffer;
-            filter.type = 'lowpass';
-            filter.frequency.value = baseFreq * 2;
-            noiseGain.gain.setValueAtTime(0.2, now);
-            noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
-            noise.connect(filter);
-            filter.connect(noiseGain);
-            noiseGain.connect(audioCtx.destination);
-
-            oscAttack.start(); oscBody.start(); noise.start();
-            oscAttack.stop(now + 0.05); oscBody.stop(now + decayTime); noise.stop(now + 0.1);
+            source.connect(gain);
+            gain.connect(audioCtx.destination);
+            
+            source.start(0);
         }
         window.addEventListener('touchstart', (e) => e.preventDefault(), { passive: false });
     </script>
