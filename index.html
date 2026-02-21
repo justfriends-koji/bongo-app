@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Real Bongo</title>
+    <style>
+        body { text-align: center; background: #fdf5e6; font-family: sans-serif; touch-action: manipulation; }
+        .bongo-container { display: flex; justify-content: center; gap: 20px; margin-top: 50px; }
+        .drum {
+            width: 150px; height: 150px; border-radius: 50%;
+            background: radial-gradient(circle, #d2b48c, #8b4513);
+            border: 8px solid #333; box-shadow: 0 10px 0 #555;
+            cursor: pointer; display: flex; align-items: center; justify-content: center;
+            font-weight: bold; font-size: 20px; color: rgba(0,0,0,0.3);
+            -webkit-tap-highlight-color: transparent;
+        }
+        .drum:active { transform: translateY(5px); box-shadow: 0 5px 0 #555; background: #8b4513; }
+        .small { width: 120px; height: 120px; margin-top: 15px; }
+    </style>
+</head>
+<body>
+    <h1>🪘 REAL BONGO 🪘</h1>
+    <p>タップして演奏しよう！</p>
+    
+    <div class="bongo-container">
+        <div class="drum small" onpointerdown="playSound('high')">HIGH</div>
+        <div class="drum" onpointerdown="playSound('low')">LOW</div>
+    </div>
+
+    <script>
+        // 音源の準備（フリーの打楽器音）
+        const sounds = {
+            high: new Audio('https://browser-sounds.s3.amazonaws.com/bongo_high.mp3'),
+            low: new Audio('https://browser-sounds.s3.amazonaws.com/bongo_low.mp3')
+        };
+
+        function playSound(type) {
+            // スマホで音が遅れないための工夫
+            const sound = sounds[type].cloneNode();
+            sound.play();
+        }
+    </script>
+</body>
+</html>
