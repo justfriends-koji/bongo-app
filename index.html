@@ -3,77 +3,89 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Crystal Kalimba</title>
+    <title>Fixed Crystal Kalimba</title>
     <style>
-        * { touch-action: none; -webkit-tap-highlight-color: transparent; }
-        html, body { position: fixed; top: 0; left: 0; width: 100%; height: 100%; margin: 0; padding: 0; background: #2c1e14; overflow: hidden; }
-        body { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; padding-bottom: 50px; color: #fdf5e6; font-family: serif; user-select: none; -webkit-user-select: none; }
-        
-        /* カリンバの本体（木の質感） */
+        /* すべての要素でズームとスクロールを物理的に禁止 */
+        * { 
+            touch-action: none !important; 
+            -webkit-tap-highlight-color: transparent; 
+            box-sizing: border-box;
+        }
+
+        html, body { 
+            position: fixed; 
+            top: 0; left: 0; 
+            width: 100vw; height: 100vh; 
+            margin: 0; padding: 0; 
+            background: #1a0a00; 
+            overflow: hidden;
+            /* 画面が「持ち上がる」のを防ぐための設定 */
+            overscroll-behavior: none;
+        }
+
+        body { 
+            display: flex; flex-direction: column; align-items: center; justify-content: center; 
+            user-select: none; -webkit-user-select: none;
+        }
+
+        /* カリンバ本体：画面中央にガッチリ固定 */
         .kalimba-body {
             display: flex; justify-content: center; align-items: flex-start;
             background: linear-gradient(to bottom, #5d3a1a, #3d2610);
-            padding: 20px; border-radius: 15px 15px 40px 40px;
-            box-shadow: 0 15px 30px rgba(0,0,0,0.5), inset 0 2px 5px rgba(255,255,255,0.1);
-            gap: 6px; border: 2px solid #2a1a0a;
+            padding: 20px 10px; border-radius: 15px 15px 30px 30px;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.5);
+            gap: 4px; border: 2px solid #2a1a0a;
+            width: 95%; max-width: 400px;
         }
 
-        /* 鉄の棒（タイン）のデザイン */
         .tine {
-            width: 22px; background: linear-gradient(to bottom, #999, #eee 20%, #bbb 80%, #777);
-            border-radius: 0 0 10px 10px; border: 1px solid #666;
-            box-shadow: 2px 5px 5px rgba(0,0,0,0.3);
-            transition: transform 0.05s;
+            flex: 1;
+            background: linear-gradient(to bottom, #888, #eee 15%, #bbb 85%, #666);
+            border-radius: 0 0 12px 12px; border: 1px solid #555;
+            box-shadow: 1px 3px 5px rgba(0,0,0,0.4);
+            /* タップ時のアニメーションをより滑らかに */
+            transition: transform 0.05s ease-out;
+            transform-origin: top;
         }
-        .tine:active { transform: translateY(8px); filter: brightness(1.2); }
+        .tine:active { transform: scaleY(1.05); filter: brightness(1.2); }
 
-        #start-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #1a0a00; display: flex; align-items: center; justify-content: center; z-index: 1000; }
-        #start-button { padding: 25px 50px; font-size: 22px; background: #d2b48c; border: none; border-radius: 12px; font-weight: bold; }
-        h1 { position: absolute; top: 10%; font-size: 24px; color: #d2b48c; letter-spacing: 4px; }
+        #start-overlay { 
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+            background: #1a0a00; display: flex; align-items: center; justify-content: center; z-index: 1000; 
+        }
+        #start-button { 
+            padding: 30px 60px; font-size: 24px; font-weight: bold; 
+            background: #d2b48c; border: none; border-radius: 15px; color: #1a0a00;
+        }
     </style>
 </head>
 <body>
 
     <div id="start-overlay">
-        <button id="start-button" onpointerdown="init(event)">カリンバを手に取る</button>
+        <button id="start-button" onclick="init(event)">演奏を開始</button>
     </div>
 
-    <h1>KALIMBA</h1>
-
-    <div class="kalimba-body" id="main-body">
-        </div>
+    <div class="kalimba-body" id="main-body"></div>
 
     <script>
         let ctx;
-        let bufs = {};
-
-        // ドレミの周波数設定（中心から左右に広がる配置）
         const scale = [
-            {f: 523.25, h: 100}, // C5
-            {f: 440.00, h: 120}, // A4
-            {f: 349.23, h: 140}, // F4
-            {f: 293.66, h: 160}, // D4
-            {f: 261.63, h: 180}, // C4 (中心)
-            {f: 329.63, h: 170}, // E4
-            {f: 392.00, h: 150}, // G4
-            {f: 493.88, h: 130}, // B4
-            {f: 587.33, h: 110}  // D5
+            {f: 523.25, h: 120}, {f: 440.00, h: 140}, {f: 349.23, h: 160},
+            {f: 293.66, h: 180}, {f: 261.63, h: 200}, {f: 329.63, h: 190},
+            {f: 392.00, h: 170}, {f: 493.88, h: 150}, {f: 587.33, h: 130}
         ];
 
-        // 金属の棒が震える透明感のある音を合成
         function createKalimbaSample(freq) {
             const len = ctx.sampleRate * 2.0;
             const buf = ctx.createBuffer(1, len, ctx.sampleRate);
             const d = buf.getChannelData(0);
             for (let i = 0; i < len; i++) {
                 const t = i / ctx.sampleRate;
-                const env = Math.exp(-t * 3.5); // 長く余韻を残す
-                // カリンバ特有の高次の倍音（金属的な響き）をミックス
+                const env = Math.exp(-t * 4);
                 const val = Math.sin(2 * Math.PI * freq * t) * 0.5 +
                             Math.sin(2 * Math.PI * freq * 2.71 * t) * 0.2 +
                             Math.sin(2 * Math.PI * freq * 5.42 * t) * 0.1;
-                // 指で弾いた瞬間の小さな「チッ」という音
-                const click = (Math.random() * 2 - 1) * Math.exp(-t * 200) * 0.2;
+                const click = (Math.random() * 2 - 1) * Math.exp(-t * 150) * 0.15;
                 d[i] = (val + click) * env;
             }
             return buf;
@@ -84,18 +96,20 @@
             ctx = new (window.AudioContext || window.webkitAudioContext)();
             const container = document.getElementById('main-body');
             
-            scale.forEach((note, i) => {
+            scale.forEach((note) => {
                 const buffer = createKalimbaSample(note.f);
                 const el = document.createElement('div');
                 el.className = 'tine';
                 el.style.height = note.h + 'px';
                 
+                // pointerdown でブラウザのズーム判定を即座に奪い取る
                 const play = (ev) => {
                     ev.preventDefault();
+                    ev.stopPropagation();
                     const s = ctx.createBufferSource();
                     s.buffer = buffer;
                     const g = ctx.createGain();
-                    g.gain.value = 0.6;
+                    g.gain.value = 0.5;
                     s.connect(g); g.connect(ctx.destination);
                     s.start(0);
                 };
@@ -106,8 +120,22 @@
             document.getElementById('start-overlay').style.display = 'none';
         }
 
-        // ズーム完全封鎖
-        document.addEventListener('touchstart', e => { if (e.touches.length > 1) e.preventDefault(); }, {passive: false});
+        // --- 鉄壁のズーム・移動防止スクリプト ---
+        // 2本指操作を完全に無視
+        document.addEventListener('touchstart', (e) => {
+            if (e.touches.length > 1) e.preventDefault();
+        }, { passive: false });
+
+        // ダブルタップを物理的に無効化
+        let lastT = 0;
+        document.addEventListener('touchend', (e) => {
+            const now = Date.now();
+            if (now - lastT <= 300) e.preventDefault();
+            lastT = now;
+        }, { passive: false });
+
+        // スクロールを完全にロック
+        window.onscroll = () => window.scrollTo(0, 0);
     </script>
 </body>
 </html>
