@@ -3,22 +3,51 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Raw Bongo Elite</title>
+    <title>Pro Bongo Elite</title>
     <style>
-        html, body { position: fixed; top: 0; left: 0; width: 100%; height: 100%; margin: 0; padding: 0; background: #1a0a00; overflow: hidden; touch-action: none; }
-        body { display: flex; flex-direction: column; align-items: center; justify-content: center; color: #fdf5e6; font-family: sans-serif; user-select: none; -webkit-user-select: none; }
+        /* 1. 画面全体を「鉄板」のように固定する */
+        * {
+            touch-action: none; /* 全要素でズーム・スクロールを禁止 */
+            -webkit-tap-highlight-color: transparent; /* タップ時の青枠を消す */
+        }
+        html, body { 
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            margin: 0; padding: 0; background: #1a0a00; overflow: hidden; 
+        }
+        body { 
+            display: flex; flex-direction: column; align-items: center; justify-content: center; 
+            color: #fdf5e6; font-family: sans-serif; user-select: none; -webkit-user-select: none;
+        }
+
         .bongo-container { display: flex; justify-content: center; align-items: center; gap: 40px; }
-        .drum { width: 150px; height: 150px; border-radius: 50%; background: radial-gradient(circle, #e9d5a1, #8b4513); border: 10px solid #2a1a0a; box-shadow: 0 10px 0 #000; touch-action: none; -webkit-tap-highlight-color: transparent; }
+        
+        /* 2. 太鼓のデザイン */
+        .drum {
+            width: 150px; height: 150px; border-radius: 50%;
+            background: radial-gradient(circle, #e9d5a1, #8b4513);
+            border: 10px solid #2a1a0a; box-shadow: 0 10px 0 #000;
+            display: flex; align-items: center; justify-content: center;
+        }
         .small { width: 120px; height: 120px; }
         .drum:active { transform: translateY(6px); box-shadow: 0 4px 0 #000; }
-        #start-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #1a0a00; display: flex; align-items: center; justify-content: center; z-index: 1000; }
-        #start-button { padding: 30px 60px; font-size: 24px; font-weight: bold; background: #d2b48c; border: none; border-radius: 15px; }
+
+        /* スタート画面 */
+        #start-overlay { 
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+            background: #1a0a00; display: flex; align-items: center; justify-content: center; z-index: 1000; 
+        }
+        #start-button { 
+            padding: 25px 50px; font-size: 22px; font-weight: bold; 
+            background: #d2b48c; border: none; border-radius: 12px; color: #1a0a00;
+        }
     </style>
 </head>
 <body>
+
     <div id="start-overlay">
-        <button id="start-button" onclick="init(event)">本物のボンゴを解凍して開始</button>
+        <button id="start-button">タップして演奏開始</button>
     </div>
+
     <div class="bongo-container">
         <div id="h" class="drum small"></div>
         <div id="l" class="drum"></div>
@@ -28,60 +57,68 @@
         let ctx;
         let bufs = {};
 
-        // 本物のボンゴ音から抽出した「革の震え」のパターン
+        // リアルな音を作る関数（前回の好評だった音を継承）
         function createBongoSample(freq) {
             const length = ctx.sampleRate * 0.15;
             const buffer = ctx.createBuffer(1, length, ctx.sampleRate);
             const data = buffer.getChannelData(0);
             for (let i = 0; i < length; i++) {
                 const t = i / ctx.sampleRate;
-                // 複数の不規則な倍音を混ぜて「革」の質感を出す
                 const env = Math.exp(-t * 25);
                 const val = Math.sin(2 * Math.PI * freq * t) * 0.5 +
                             Math.sin(2 * Math.PI * freq * 1.62 * t) * 0.2 +
                             Math.sin(2 * Math.PI * freq * 2.45 * t) * 0.1;
-                // 打撃瞬間のノイズ成分
                 const noise = (Math.random() * 2 - 1) * Math.exp(-t * 80) * 0.4;
                 data[i] = (val + noise) * env;
             }
             return buffer;
         }
 
-        function init(e) {
+        // 開始処理
+        document.getElementById('start-button').addEventListener('click', (e) => {
             e.preventDefault();
             ctx = new (window.AudioContext || window.webkitAudioContext)();
-            bufs.h = createBongoSample(520); // High Tom
-            bufs.l = createBongoSample(220); // Low Tom
+            bufs.h = createBongoSample(520);
+            bufs.l = createBongoSample(220);
             document.getElementById('start-overlay').style.display = 'none';
-        }
+        }, { passive: false });
 
         function play(b) {
             if (!ctx) return;
             const s = ctx.createBufferSource();
             s.buffer = b;
-            // 叩くたびにピッチを微変させて「同じ音の繰り返し感」を消す
             s.playbackRate.value = 0.96 + Math.random() * 0.08;
-            const g = ctx.createGain();
-            g.gain.value = 1.0;
-            s.connect(g); g.connect(ctx.destination);
+            s.connect(ctx.destination);
             s.start(0);
         }
 
-        // イベント登録
-        [['h', 'h'], ['l', 'l']].forEach(([id, b]) => {
+        // 3. iPhoneのズームを「物理的」に封じる最強の対策
+        const drums = [['h', 'h'], ['l', 'l']];
+        drums.forEach(([id, b]) => {
             const el = document.getElementById(id);
-            const handler = (e) => { e.preventDefault(); play(bufs[b]); };
+            
+            // 全てのタッチイベントで「ブラウザの仕事」を奪う
+            const handler = (e) => {
+                e.preventDefault(); // これがズレを防ぐ
+                play(bufs[b]);
+            };
+
+            el.addEventListener('touchstart', handler, { passive: false });
             el.addEventListener('pointerdown', handler, { passive: false });
         });
 
-        // ズレ防止の最終防衛ライン
-        document.addEventListener('touchstart', e => { if (e.touches.length > 1) e.preventDefault(); }, {passive: false});
-        let lastT = 0;
-        document.addEventListener('touchend', e => {
+        // ダブルタップズームをJavaScriptレベルで強制無視
+        let lastTouchTime = 0;
+        document.addEventListener('touchstart', (e) => {
             const now = Date.now();
-            if (now - lastT < 300) e.preventDefault();
-            lastT = now;
-        }, {passive: false});
+            if (now - lastTouchTime <= 300) {
+                e.preventDefault(); // 0.3秒以内の連続タップを無効化
+            }
+            lastTouchTime = now;
+        }, { passive: false });
+
+        // 念押し：画面全体のジェスチャーを禁止
+        document.addEventListener('gesturestart', (e) => e.preventDefault());
     </script>
 </body>
 </html>
