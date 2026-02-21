@@ -3,121 +3,114 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Realistic Bongo Pro</title>
+    <title>Ultimate Real Bongo</title>
     <style>
-        /* 画面固定 */
+        /* 画面を宇宙の果てまで固定する設定 */
         html, body { 
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
-            margin: 0; padding: 0; background: #1a0a00; overflow: hidden; 
-            touch-action: none; 
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            margin: 0; padding: 0; background: #1a0a00; overflow: hidden;
+            touch-action: none; -webkit-text-size-adjust: none;
         }
         body { 
             display: flex; flex-direction: column; align-items: center; justify-content: center; 
-            color: #fdf5e6; font-family: sans-serif; 
-            user-select: none; -webkit-user-select: none;
+            color: #fdf5e6; font-family: sans-serif; user-select: none; -webkit-user-select: none;
+            -webkit-tap-highlight-color: transparent;
         }
-        
-        /* スタート画面：iPhoneが反応しやすいようにシンプルに */
+        .bongo-container { display: flex; justify-content: center; align-items: center; gap: 40px; }
+        .drum {
+            width: 150px; height: 150px; border-radius: 50%;
+            background: radial-gradient(circle, #e9d5a1 10%, #8b4513 100%);
+            border: 10px solid #2a1a0a; box-shadow: 0 10px 0 #000;
+            display: flex; align-items: center; justify-content: center;
+            /* ダブルタップを完全に殺す魔法のプロパティ */
+            touch-action: none;
+        }
+        .small { width: 120px; height: 120px; }
+        .drum:active { transform: translateY(6px); box-shadow: 0 4px 0 #000; }
+
         #start-overlay { 
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
             background: #1a0a00; display: flex; align-items: center; justify-content: center; z-index: 1000; 
         }
         #start-button { 
             padding: 30px 60px; font-size: 24px; font-weight: bold; 
             background: #d2b48c; border: none; border-radius: 15px; color: #1a0a00;
-            box-shadow: 0 8px 0 #5d2e0c;
         }
-        #start-button:active { transform: translateY(4px); box-shadow: 0 4px 0 #5d2e0c; }
-
-        .bongo-container { display: flex; justify-content: center; align-items: center; gap: 40px; }
-        .drum {
-            position: relative; border-radius: 50%;
-            background: radial-gradient(circle, #e9d5a1 10%, #8b4513 100%);
-            border: 12px solid #2a1a0a; box-shadow: 0 10px 0 #000;
-            display: flex; align-items: center; justify-content: center;
-            -webkit-tap-highlight-color: transparent;
-        }
-        .drum:active { transform: translateY(6px); box-shadow: 0 4px 0 #000; }
-        .large { width: 160px; height: 160px; }
-        .small { width: 130px; height: 130px; }
     </style>
 </head>
 <body>
 
     <div id="start-overlay">
-        <button id="start-button" onclick="enableAudio()">演奏を開始する</button>
+        <button id="start-button" onclick="enableAudio()">演奏開始</button>
     </div>
 
-    <h2 style="color:#d2b48c; opacity:0.6;">REAL BONGO</h2>
-    
     <div class="bongo-container">
-        <div class="drum small" onpointerdown="playBongo(480, 0.1, event)"></div>
-        <div class="drum large" onpointerdown="playBongo(220, 0.15, event)"></div>
+        <div id="bongo-high" class="drum small"></div>
+        <div id="bongo-low" class="drum"></div>
     </div>
 
     <script>
         let audioCtx = null;
+        const bongoHigh = "https://raw.githubusercontent.com/vincerp/BongoCat-Samples/master/sounds/bongo_high.mp3";
+        const bongoLow = "https://raw.githubusercontent.com/vincerp/BongoCat-Samples/master/sounds/bongo_low.mp3";
+        let highBuffer, lowBuffer;
 
-        function enableAudio() {
-            // AudioContextの起動
+        async function enableAudio() {
             audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            if (audioCtx.state === 'suspended') {
-                audioCtx.resume();
+            
+            // 本物の音源をネットから一度だけしっかり読み込む
+            const load = async (url) => {
+                const res = await fetch(url);
+                const arrayBuffer = await res.arrayBuffer();
+                return await audioCtx.decodeAudioData(arrayBuffer);
+            };
+
+            try {
+                highBuffer = await load(bongoHigh);
+                lowBuffer = await load(bongoLow);
+                document.getElementById('start-overlay').style.display = 'none';
+            } catch(e) {
+                alert("音の読み込みに失敗しました。再読み込みしてください。");
             }
-            // 画面を消す
-            document.getElementById('start-overlay').style.display = 'none';
         }
 
-        function playBongo(baseFreq, duration, e) {
-            if (!audioCtx) return;
-            if (e) e.preventDefault();
-            
-            const now = audioCtx.currentTime;
-
-            // --- 1. アタック（革が指に当たる「コンッ」という乾いた音） ---
-            const noise = audioCtx.createBufferSource();
-            const noiseBuffer = audioCtx.createBuffer(1, audioCtx.sampleRate * 0.05, audioCtx.sampleRate);
-            const noiseData = noiseBuffer.getChannelData(0);
-            for (let i = 0; i < noiseBuffer.length; i++) noiseData[i] = Math.random() * 2 - 1;
-            noise.buffer = noiseBuffer;
-
-            const noiseFilter = audioCtx.createBiquadFilter();
-            noiseFilter.type = 'highpass';
-            noiseFilter.frequency.value = 2000; // さらに高域にして乾いた音に
-
-            const noiseGain = audioCtx.createGain();
-            noiseGain.gain.setValueAtTime(0.4, now);
-            noiseGain.gain.exponentialRampToValueAtTime(0.01, now + 0.02);
-
-            noise.connect(noiseFilter);
-            noiseFilter.connect(noiseGain);
-            noiseGain.connect(audioCtx.destination);
-
-            // --- 2. 胴鳴り（ドラムの深い響き） ---
-            const osc = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
-            
-            osc.type = 'triangle';
-            osc.frequency.setValueAtTime(baseFreq, now);
-            osc.frequency.exponentialRampToValueAtTime(baseFreq * 0.6, now + duration);
-
-            gain.gain.setValueAtTime(0.5, now);
-            gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
-
-            osc.connect(gain);
-            gain.connect(audioCtx.destination);
-
-            noise.start(now);
-            osc.start(now);
-            osc.stop(now + duration);
+        function play(buffer) {
+            if (!audioCtx || !buffer) return;
+            const source = audioCtx.createBufferSource();
+            source.buffer = buffer;
+            // 叩くたびに少しだけ音程を変えてリアルにする
+            source.playbackRate.value = 0.95 + Math.random() * 0.1;
+            source.connect(audioCtx.destination);
+            source.start(0);
         }
 
-        // iPhoneのズーム防止（スタートボタン以外）
+        // イベントリスナーを直接登録して、ブラウザの標準動作（ズーム）を徹底的にブロック
+        const drums = [
+            { id: 'bongo-high', buffer: () => highBuffer },
+            { id: 'bongo-low', buffer: () => lowBuffer }
+        ];
+
+        drums.forEach(d => {
+            const el = document.getElementById(d.id);
+            el.addEventListener('pointerdown', (e) => {
+                e.preventDefault();
+                play(d.buffer());
+            }, { passive: false });
+        });
+
+        // 画面のどこを触っても、ダブルタップでのズームを許さない設定
         document.addEventListener('touchstart', (e) => {
-            if (e.target.tagName !== 'BUTTON') {
-                if (e.touches.length > 1) e.preventDefault();
-            }
+            if (e.touches.length > 1) e.preventDefault();
         }, { passive: false });
+
+        let lastTouchEnd = 0;
+        document.addEventListener('touchend', (e) => {
+            const now = (new Date()).getTime();
+            if (now - lastTouchEnd <= 300) {
+                e.preventDefault(); // 0.3秒以内の連続タップ（ダブルタップ）を無効化
+            }
+            lastTouchEnd = now;
+        }, false);
     </script>
 </body>
 </html>
