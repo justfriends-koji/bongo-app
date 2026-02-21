@@ -69,4 +69,31 @@
             oscBody.frequency.setValueAtTime(baseFreq, now);
             oscBody.frequency.exponentialRampToValueAtTime(baseFreq * 0.5, now + decayTime);
             gainBody.gain.setValueAtTime(0.5, now);
-            gainBody.gain.exponentialRampToValueAtTime(0.001, now +
+            gainBody.gain.exponentialRampToValueAtTime(0.001, now + decayTime);
+            oscBody.connect(gainBody);
+            gainBody.connect(audioCtx.destination);
+
+            // 3. 【ノイズ】革の震えのザラつき
+            const bufferSize = audioCtx.sampleRate * 0.1;
+            const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+            const data = buffer.getChannelData(0);
+            for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+            const noise = audioCtx.createBufferSource();
+            const noiseGain = audioCtx.createGain();
+            const filter = audioCtx.createBiquadFilter();
+            noise.buffer = buffer;
+            filter.type = 'lowpass';
+            filter.frequency.value = baseFreq * 2;
+            noiseGain.gain.setValueAtTime(0.2, now);
+            noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
+            noise.connect(filter);
+            filter.connect(noiseGain);
+            noiseGain.connect(audioCtx.destination);
+
+            oscAttack.start(); oscBody.start(); noise.start();
+            oscAttack.stop(now + 0.05); oscBody.stop(now + decayTime); noise.stop(now + 0.1);
+        }
+        window.addEventListener('touchstart', (e) => e.preventDefault(), { passive: false });
+    </script>
+</body>
+</html>
