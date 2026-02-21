@@ -3,10 +3,27 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Ultimate Bongo</title>
+    <title>Perfect Bongo</title>
     <style>
-        body { text-align: center; background: #332211; color: #fdf5e6; font-family: sans-serif; touch-action: manipulation; margin: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; }
-        h1 { margin-top: 0; font-size: 24px; color: #d2b48c; }
+        body { 
+            text-align: center; 
+            background: #332211; 
+            color: #fdf5e6; 
+            font-family: sans-serif; 
+            margin: 0; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: center; 
+            height: 100vh;
+            /* ズームやスクロールを完全に無効化 */
+            touch-action: none; 
+            /* 文字選択を禁止 */
+            user-select: none;
+            -webkit-user-select: none;
+            overflow: hidden;
+        }
+        h1 { margin-top: 0; font-size: 24px; color: #d2b48c; pointer-events: none; }
         .bongo-container { display: flex; justify-content: center; gap: 30px; }
         .drum {
             width: 140px; height: 140px; border-radius: 50%;
@@ -14,59 +31,12 @@
             border: 10px solid #221100; box-shadow: 0 12px 0 #110800;
             cursor: pointer; display: flex; align-items: center; justify-content: center;
             font-weight: bold; font-size: 18px; color: rgba(0,0,0,0.4);
-            -webkit-tap-highlight-color: transparent; transition: transform 0.05s;
+            -webkit-tap-highlight-color: transparent; 
+            transition: transform 0.05s;
         }
+        /* 叩いた時のアニメーションをよりクイックに */
         .drum:active { transform: translateY(8px); box-shadow: 0 4px 0 #110800; }
         .small { width: 110px; height: 110px; margin-top: 15px; }
-        #start-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); display: flex; align-items: center; justify-content: center; z-index: 100; }
-        #start-button { padding: 20px 40px; font-size: 20px; font-weight: bold; background: #d2b48c; border: none; border-radius: 50px; color: #332211; cursor: pointer; }
-    </style>
-</head>
-<body>
-
-    <div id="start-overlay">
-        <button id="start-button">タップしてボンゴを開始！</button>
-    </div>
-
-    <h1>🪘 REAL BONGO 🪘</h1>
-    
-    <div class="bongo-container">
-        <div class="drum small" onpointerdown="playBongo(800)">HIGH</div>
-        <div class="drum" onpointerdown="playBongo(200)">LOW</div>
-    </div>
-
-    <p style="margin-top: 40px; font-size: 12px; opacity: 0.7;">※iPhoneはマナーモードを解除してね！</p>
-
-    <script>
-        let audioCtx = null;
-
-        // 最初のクリックでオーディオ機能を起動する（iPhone対策）
-        document.getElementById('start-button').addEventListener('click', () => {
-            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            document.getElementById('start-overlay').style.display = 'none';
-        });
-
-        function playBongo(frequency) {
-            if (!audioCtx) return;
-            if (audioCtx.state === 'suspended') audioCtx.resume();
-
-            // 音をその場で合成して鳴らす（音源ファイル不要！）
-            const osc = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
-
-            osc.type = 'triangle'; // ボンゴに近い柔らかい音
-            osc.frequency.setValueAtTime(frequency, audioCtx.currentTime);
-            osc.frequency.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
-
-            gain.gain.setValueAtTime(0.5, audioCtx.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
-
-            osc.connect(gain);
-            gain.connect(audioCtx.destination);
-
-            osc.start();
-            osc.stop(audioCtx.currentTime + 0.1);
-        }
-    </script>
-</body>
-</html>
+        
+        #start-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); display: flex; align-items: center; justify-content: center; z-index: 100; }
+        #start-button { padding: 20px 40px; font-size: 20px; font-weight: bold; background: #d2b48c; border: none; border-radius: 50px; color: #332211;
