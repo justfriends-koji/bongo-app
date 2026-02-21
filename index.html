@@ -7,12 +7,6 @@
   <title>AI Manzai LIVE</title>
 
   <style>
-    /* ===== iOS Safariで壊れにくい“固定” =====
-       - 全要素 touch-action:none はやらない（タップが死ぬ原因）
-       - html/body fixed はやらない（高さ計算が崩れる原因）
-       - overflow/overscrollでスクロールを止める
-    */
-
     * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
     html, body {
@@ -24,28 +18,23 @@
       height: 100%;
     }
 
-    /* 画面を1枚に固定：スクロール禁止 */
     body {
       overflow: hidden;
       overscroll-behavior: none;
-      -webkit-overflow-scrolling: auto;
-      touch-action: manipulation; /* タップは許す。ピンチズーム等は抑制寄り */
       -webkit-touch-callout: none;
       -webkit-user-select: none;
       user-select: none;
+      touch-action: manipulation;
     }
 
-    /* iOSのアドレスバー出入りでも崩れにくい：dvh優先、なければvh */
     .app {
       width: 100vw;
-      height: 100vh;     /* fallback */
-      height: 100dvh;    /* modern iOS */
+      height: 100vh;   /* fallback */
+      height: 100dvh;  /* iOS modern */
       display: flex;
       flex-direction: column;
       justify-content: space-between;
       align-items: center;
-
-      /* セーフエリア対応（ノッチ） */
       padding:
         calc(24px + env(safe-area-inset-top))
         20px
@@ -53,52 +42,51 @@
       gap: 16px;
     }
 
-    /* セリフ表示エリア */
     #caption-box {
       width: min(560px, 95vw);
       min-height: 140px;
       background: rgba(255,255,255,0.10);
       border: 2px solid #333;
-      border-radius: 15px;
+      border-radius: 18px;
       padding: 18px 16px;
       text-align: center;
       display: flex;
       align-items: center;
       justify-content: center;
       font-size: 1.2rem;
-      line-height: 1.6;
+      line-height: 1.7;
       color: #0f0;
     }
 
-    /* 漫才ステージ */
     .stage {
-      width: min(400px, 90vw);
+      width: min(420px, 90vw);
       height: 42dvh;
-      max-height: 360px;
+      max-height: 380px;
       background: radial-gradient(circle at bottom, #333, #000);
       border-bottom: 8px solid #b00;
-      border-radius: 20px;
+      border-radius: 22px;
       display: flex;
       justify-content: center;
       align-items: flex-end;
-      gap: 40px;
+      gap: 44px;
       position: relative;
+      box-shadow: 0 0 60px rgba(0,0,0,0.6) inset;
     }
 
     .comic {
-      width: 70px;
-      height: 130px;
+      width: 74px;
+      height: 138px;
       background: #fff;
-      border-radius: 35px 35px 5px 5px;
-      position: relative;
+      border-radius: 38px 38px 8px 8px;
       transform: translateY(0) scale(1);
       transition: transform 0.12s ease;
       will-change: transform;
+      box-shadow: 0 14px 30px rgba(0,0,0,0.35);
     }
 
     .mic {
       width: 8px;
-      height: 110px;
+      height: 112px;
       background: #777;
       position: absolute;
       bottom: 0;
@@ -108,22 +96,24 @@
       border-radius: 4px;
     }
 
-    /* 操作ボタン */
     #gen-btn {
       width: min(560px, 80vw);
       padding: 20px 18px;
       font-size: 18px;
-      font-weight: 800;
+      font-weight: 900;
       border: none;
       border-radius: 999px;
       background: #d2b48c;
       color: #1a0a00;
       box-shadow: 0 6px 0 #5d2e0c;
       cursor: pointer;
-      touch-action: manipulation; /* ボタンは確実にタップを通す */
+      touch-action: manipulation;
     }
     #gen-btn:active { transform: translateY(4px); box-shadow: 0 2px 0 #5d2e0c; }
     #gen-btn:disabled { background: #555; color: #888; box-shadow: none; cursor: not-allowed; }
+
+    /* ちょい見栄え：行頭の A/B を太く */
+    .strong { font-weight: 800; }
   </style>
 </head>
 
@@ -141,13 +131,11 @@
   </div>
 
   <script>
-    // ===== 1) 設定：APIキー =====
-    const API_KEY = 'ここにあなたのAPIキーを貼り付け';
-
-    // ===== 2) プロンプト =====
+    // ===== ここは必要なら変える（フロント内の指示） =====
     const PROMPT =
       "あなたは日本一の漫才師です。ボケ(A)とツッコミ(B)の2人組による爆笑漫才を書いてください。ルール：1.必ず「A：」「B：」という形式で交互に話すこと。2.最後は必ず「もうええわ！」で締めること。3.文字数は短めでテンポ重視。";
 
+    // ===== 以下は基本いじらなくてOK =====
     const box = document.getElementById('caption-box');
     const btn = document.getElementById('gen-btn');
 
@@ -175,55 +163,43 @@
     async function generateManzai() {
       if (isPlaying) return;
 
-      // APIキー未設定ガード
-      if (!API_KEY || API_KEY.includes('ここにあなたのAPIキー')) {
-        setCaption("APIキーが未設定です。コード内の API_KEY を差し替えてください。");
-        return;
-      }
-
       isPlaying = true;
       btn.disabled = true;
       clearTimers();
       setCaption("ネタを構築中...");
 
       try {
-        const url =
-          `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${encodeURIComponent(API_KEY)}`;
-
-        const response = await fetch(url, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [{ parts: [{ text: PROMPT }] }]
-          })
+        // ★安全版：ブラウザから直接Geminiへ行かず、自分の /api/manzai を叩く
+        const response = await fetch("/api/manzai", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ prompt: PROMPT })
         });
 
-        // HTTPエラーを明示
         if (!response.ok) {
-          const errText = await response.text().catch(() => "");
-          throw new Error(`HTTP ${response.status} ${response.statusText} ${errText}`.trim());
+          const t = await response.text().catch(() => "");
+          throw new Error(`HTTP ${response.status} ${response.statusText} ${t}`.trim());
         }
 
         const data = await response.json();
 
-        // APIのエラー形式
+        // Vercel側が返したエラー（Gemini error をそのまま返してる場合）
         if (data?.error?.message) throw new Error(data.error.message);
+        if (typeof data?.error === "string") throw new Error(data.error);
 
-        // candidatesが無い/空のケースに備える
         const fullText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
         if (!fullText || typeof fullText !== "string") {
-          throw new Error("AIの返答を取得できませんでした（candidates が空、または形式が想定外）。");
+          throw new Error("AIの返答を取得できませんでした。/api/manzai の実装と環境変数を確認してください。");
         }
 
         // セリフ行だけ抽出（A: / A： / B: / B：）
         const scriptLines = fullText
-          .split('\n')
+          .split("\n")
           .map(s => s.trim())
           .filter(line => /^[AB][：:]/.test(line));
 
         if (!scriptLines.length) {
-          // 念のため：抽出できなければ全文表示（短く）
-          setCaption(fullText.slice(0, 140) + (fullText.length > 140 ? "…" : ""));
+          setCaption(fullText.slice(0, 160) + (fullText.length > 160 ? "…" : ""));
           isPlaying = false;
           btn.disabled = false;
           return;
@@ -231,9 +207,9 @@
 
         playManzai(scriptLines);
 
-      } catch (error) {
-        console.error(error);
-        setCaption("APIエラー：キー/権限/制限、またはネットワークを確認してください。");
+      } catch (err) {
+        console.error(err);
+        setCaption("エラー：/api/manzai が動いていないか、サーバー側のGEMINI_KEY未設定です。");
         isPlaying = false;
         btn.disabled = false;
       }
@@ -247,7 +223,7 @@
           const line = lines[i];
           setCaption(line);
 
-          const targetId = line.startsWith('A') ? 'ai-1' : 'ai-2';
+          const targetId = line.startsWith("A") ? "ai-1" : "ai-2";
           bounce(targetId);
 
           i++;
@@ -262,14 +238,7 @@
       showNextLine();
     }
 
-    // ボタンイベント（onclick属性より安定）
-    btn.addEventListener('click', generateManzai);
-
-    // 画面回転/アドレスバー変動でも安定させたい場合の保険（必要なら）
-    // ここでは高さ再計算を強制しないので、事故りにくい
-    window.addEventListener('orientationchange', () => {
-      // 何もしない（必要なら後で調整）
-    });
+    btn.addEventListener("click", generateManzai);
   </script>
 </body>
 </html>
