@@ -3,94 +3,130 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Fixed Bongo</title>
+    <title>Pro Bongo</title>
     <style>
-        /* 画面全体を「絶対に動かない箱」にする */
         html, body { 
-            position: fixed; 
-            top: 0; left: 0; width: 100%; height: 100%;
-            margin: 0; padding: 0; 
-            background: #332211; 
-            overflow: hidden; 
-            touch-action: none; /* 全方向のスクロール・ズームを禁止 */
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            margin: 0; padding: 0; background: #221100; overflow: hidden; touch-action: none;
         }
         body { 
             display: flex; flex-direction: column; align-items: center; justify-content: center; 
-            color: #fdf5e6; font-family: sans-serif; 
-            user-select: none; -webkit-user-select: none;
+            color: #fdf5e6; font-family: sans-serif; user-select: none; -webkit-user-select: none;
             -webkit-tap-highlight-color: transparent;
         }
-        h1 { font-size: 22px; color: #d2b48c; margin-bottom: 20px; pointer-events: none; }
+        h1 { font-size: 20px; color: #d2b48c; margin-bottom: 20px; pointer-events: none; opacity: 0.7; }
         
-        .bongo-container { 
-            display: flex; justify-content: center; align-items: center; gap: 20px; 
-            width: 100%; height: 200px;
-        }
+        .bongo-container { display: flex; justify-content: center; align-items: center; gap: 20px; }
+        
+        /* 太鼓の基本デザイン */
         .drum {
-            width: 130px; height: 130px; border-radius: 50%;
+            position: relative; border-radius: 50%;
             background: radial-gradient(circle, #ecd8a5 30%, #8b4513 100%);
-            border: 8px solid #221100; box-shadow: 0 10px 0 #110800;
+            border: 8px solid #1a0a00; box-shadow: 0 8px 0 #000;
             display: flex; align-items: center; justify-content: center;
-            font-weight: bold; font-size: 16px; color: rgba(0,0,0,0.4);
-            /* タッチの反応を最優先にする */
-            touch-action: none;
+            touch-action: none; transition: transform 0.05s;
         }
-        .drum:active { transform: translateY(6px); box-shadow: 0 4px 0 #110800; }
-        .small { width: 100px; height: 100px; }
+        .drum:active { transform: translateY(4px); box-shadow: 0 4px 0 #000; }
+        
+        /* 中心（Center）の叩き場所 */
+        .center-zone {
+            width: 60%; height: 60%; border-radius: 50%;
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px dashed rgba(0, 0, 0, 0.1);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 12px; color: rgba(0,0,0,0.2);
+        }
 
-        /* スタート画面 */
+        .large { width: 150px; height: 150px; }
+        .small { width: 120px; height: 120px; }
+
         #start-overlay { 
             position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
-            background: #332211; display: flex; align-items: center; justify-content: center; z-index: 1000; 
+            background: #221100; display: flex; align-items: center; justify-content: center; z-index: 1000; 
         }
         #start-button { 
             padding: 20px 40px; font-size: 20px; font-weight: bold; 
-            background: #d2b48c; border: none; border-radius: 15px; color: #332211;
+            background: #d2b48c; border: none; border-radius: 15px; color: #221100;
         }
     </style>
 </head>
 <body>
 
-    <div id="start-overlay">
-        <button id="start-button" onpointerdown="enableAudio(event)">タップして開始</button>
+    <div id="start-overlay" onpointerdown="enableAudio(event)">
+        <button id="start-button">タップして演奏開始</button>
     </div>
 
-    <h1>🪘 REAL BONGO 🪘</h1>
+    <h1>🪘 Pro Bongo: Edge & Center 🪘</h1>
     
     <div class="bongo-container">
-        <div class="drum small" onpointerdown="playBongo(800, event)">HIGH</div>
-        <div class="drum" onpointerdown="playBongo(200, event)">LOW</div>
+        <div class="drum small" onpointerdown="handleTap(event, 'high')">
+            <div class="center-zone">CENTER</div>
+        </div>
+        <div class="drum large" onpointerdown="handleTap(event, 'low')">
+            <div class="center-zone">CENTER</div>
+        </div>
     </div>
 
     <script>
         let audioCtx = null;
 
         function enableAudio(e) {
-            e.preventDefault(); // これがズレを止める鍵
+            e.preventDefault();
             audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             document.getElementById('start-overlay').style.display = 'none';
         }
 
-        function playBongo(frequency, e) {
-            if (e) e.preventDefault(); // 叩いた瞬間の「ズレ」を強制防止
+        // 叩いた位置を判定して音を分ける関数
+        function handleTap(e, drumType) {
+            e.preventDefault();
             if (!audioCtx) return;
 
-            const osc = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
-            osc.type = 'triangle';
-            osc.frequency.setValueAtTime(frequency, audioCtx.currentTime);
-            osc.frequency.exponentialRampToValueAtTime(frequency / 2, audioCtx.currentTime + 0.1);
-            gain.gain.setValueAtTime(0.5, audioCtx.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
-            osc.connect(gain);
-            gain.connect(audioCtx.destination);
-            osc.start();
-            osc.stop(audioCtx.currentTime + 0.1);
+            // 叩いた位置（座標）を取得
+            const rect = e.currentTarget.getBoundingClientRect();
+            const x = e.clientX - rect.left - rect.width / 2;
+            const y = e.clientY - rect.top - rect.height / 2;
+            const distance = Math.sqrt(x*x + y*y);
+
+            // 中心からの距離で音を変える（半径の55%以内なら中心音）
+            const isCenter = distance < (rect.width / 2) * 0.55;
+
+            let freq = (drumType === 'high') ? 600 : 200;
+            let decay = 0.1;
+            let type = 'triangle';
+
+            if (isCenter) {
+                // 中心：低めで響く音（オープン）
+                freq = freq * 0.9;
+                decay = 0.2;
+            } else {
+                // 端：高めで鋭い音（スラップ）
+                freq = freq * 1.5;
+                decay = 0.05;
+                type = 'sine'; // より鋭い音色に
+            }
+
+            playBongo(freq, decay, type);
         }
 
-        // 画面のどこを触っても「ズレ」を許さない
+        function playBongo(freq, decay, type) {
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+
+            osc.type = type;
+            osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(freq / 2, audioCtx.currentTime + decay);
+
+            gain.gain.setValueAtTime(0.4, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + decay);
+
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+
+            osc.start();
+            osc.stop(audioCtx.currentTime + decay);
+        }
+
         window.addEventListener('touchstart', (e) => e.preventDefault(), { passive: false });
-        window.addEventListener('touchmove', (e) => e.preventDefault(), { passive: false });
     </script>
 </body>
 </html>
