@@ -5,38 +5,94 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Perfect Bongo</title>
     <style>
-        body { 
-            text-align: center; 
-            background: #332211; 
-            color: #fdf5e6; 
-            font-family: sans-serif; 
+        /* 画面が崩れないよう、高さを固定して調整 */
+        html, body { 
+            height: 100%; 
             margin: 0; 
+            padding: 0; 
+            background: #332211; 
+            overflow: hidden; 
+            touch-action: none;
+        }
+        body { 
             display: flex; 
             flex-direction: column; 
             align-items: center; 
             justify-content: center; 
-            height: 100vh;
-            /* ズームやスクロールを完全に無効化 */
-            touch-action: none; 
-            /* 文字選択を禁止 */
+            color: #fdf5e6; 
+            font-family: sans-serif; 
             user-select: none;
             -webkit-user-select: none;
-            overflow: hidden;
         }
-        h1 { margin-top: 0; font-size: 24px; color: #d2b48c; pointer-events: none; }
-        .bongo-container { display: flex; justify-content: center; gap: 30px; }
+        h1 { font-size: 24px; color: #d2b48c; margin-bottom: 30px; }
+        .bongo-container { display: flex; justify-content: center; gap: 20px; align-items: flex-end; }
         .drum {
             width: 140px; height: 140px; border-radius: 50%;
             background: radial-gradient(circle, #ecd8a5 30%, #8b4513 100%);
-            border: 10px solid #221100; box-shadow: 0 12px 0 #110800;
-            cursor: pointer; display: flex; align-items: center; justify-content: center;
+            border: 8px solid #221100; box-shadow: 0 10px 0 #110800;
+            display: flex; align-items: center; justify-content: center;
             font-weight: bold; font-size: 18px; color: rgba(0,0,0,0.4);
             -webkit-tap-highlight-color: transparent; 
-            transition: transform 0.05s;
         }
-        /* 叩いた時のアニメーションをよりクイックに */
-        .drum:active { transform: translateY(8px); box-shadow: 0 4px 0 #110800; }
-        .small { width: 110px; height: 110px; margin-top: 15px; }
+        .drum:active { transform: translateY(6px); box-shadow: 0 4px 0 #110800; }
+        .small { width: 110px; height: 110px; }
         
-        #start-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); display: flex; align-items: center; justify-content: center; z-index: 100; }
-        #start-button { padding: 20px 40px; font-size: 20px; font-weight: bold; background: #d2b48c; border: none; border-radius: 50px; color: #332211;
+        /* スタート画面を絶対に見える位置に固定 */
+        #start-overlay { 
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+            background: #332211; display: flex; align-items: center; justify-content: center; z-index: 999; 
+        }
+        #start-button { 
+            padding: 25px 50px; font-size: 22px; font-weight: bold; 
+            background: #d2b48c; border: none; border-radius: 15px; color: #332211;
+            box-shadow: 0 5px 0 #8b4513;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="start-overlay">
+        <button id="start-button" onclick="enableAudio()">タップして開始！</button>
+    </div>
+
+    <h1>🪘 PERFECT BONGO 🪘</h1>
+    
+    <div class="bongo-container">
+        <div class="drum small" onpointerdown="playBongo(800)">HIGH</div>
+        <div class="drum" onpointerdown="playBongo(200)">LOW</div>
+    </div>
+
+    <script>
+        let audioCtx = null;
+
+        function enableAudio() {
+            // ここで音の準備をする（iPhoneの制限解除）
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            
+            // スタート画面を消す
+            document.getElementById('start-overlay').style.display = 'none';
+        }
+
+        function playBongo(frequency) {
+            if (!audioCtx) return;
+            
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(frequency, audioCtx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(frequency / 2, audioCtx.currentTime + 0.1);
+
+            gain.gain.setValueAtTime(0.5, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.1);
+        }
+    </script>
+</body>
+</html>
