@@ -3,40 +3,40 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Organic Bongo</title>
+    <title>Dynamic Tom-Tom</title>
     <style>
         html, body { 
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            margin: 0; padding: 0; background: #1a0a00; overflow: hidden; touch-action: none;
+            margin: 0; padding: 0; background: #0a0a0a; overflow: hidden; touch-action: none;
         }
         body { 
             display: flex; flex-direction: column; align-items: center; justify-content: center; 
-            color: #fdf5e6; font-family: sans-serif; user-select: none; -webkit-user-select: none;
+            color: #eee; font-family: sans-serif; user-select: none; -webkit-user-select: none;
             -webkit-tap-highlight-color: transparent;
         }
-        .bongo-container { display: flex; justify-content: center; align-items: center; gap: 30px; }
-        .drum {
+        .drum-set { display: flex; justify-content: center; align-items: center; gap: 30px; }
+        .tom {
             position: relative; border-radius: 50%;
-            background: radial-gradient(circle, #d2b48c 20%, #5d2e0c 100%);
-            border: 10px solid #222; box-shadow: 0 10px 0 #000;
+            background: radial-gradient(circle, #444 0%, #111 100%);
+            border: 12px solid #888; box-shadow: 0 10px 0 #333;
             display: flex; align-items: center; justify-content: center;
             touch-action: none;
         }
-        .drum:active { transform: translateY(6px); box-shadow: 0 4px 0 #000; }
-        .center-zone { width: 65%; height: 65%; border-radius: 50%; background: rgba(0,0,0,0.05); border: 1px dashed rgba(255,255,255,0.05); }
-        .large { width: 160px; height: 160px; }
-        .small { width: 130px; height: 130px; }
-        #start-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #1a0a00; display: flex; align-items: center; justify-content: center; z-index: 1000; }
-        #start-button { padding: 25px 50px; font-size: 20px; font-weight: bold; background: #d2b48c; border: none; border-radius: 15px; color: #1a0a00; }
+        .tom:active { transform: translateY(6px); box-shadow: 0 4px 0 #333; background: #222; }
+        .rim { width: 90%; height: 90%; border-radius: 50%; border: 1px solid rgba(255,255,255,0.1); }
+        .high-tom { width: 140px; height: 140px; }
+        .low-tom { width: 170px; height: 170px; }
+        #start-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #000; display: flex; align-items: center; justify-content: center; z-index: 1000; }
+        #start-button { padding: 25px 50px; font-size: 20px; font-weight: bold; background: #888; border: none; border-radius: 10px; color: #fff; }
     </style>
 </head>
 <body>
     <div id="start-overlay" onpointerdown="enableAudio(event)">
-        <button id="start-button">リアルな音を生成して開始</button>
+        <button id="start-button">TOM-TOM START</button>
     </div>
-    <div class="bongo-container">
-        <div class="drum small" onpointerdown="handleTap(event, 'high')"><div class="center-zone"></div></div>
-        <div class="drum large" onpointerdown="handleTap(event, 'low')"><div class="center-zone"></div></div>
+    <div class="drum-set">
+        <div class="tom high-tom" onpointerdown="playTom(150, 0.4, event)"><div class="rim"></div></div>
+        <div class="tom low-tom" onpointerdown="playTom(90, 0.6, event)"><div class="rim"></div></div>
     </div>
     <script>
         let audioCtx = null;
@@ -46,68 +46,27 @@
             document.getElementById('start-overlay').style.display = 'none';
         }
 
-        function handleTap(e, drumType) {
-            e.preventDefault();
+        function playTom(baseFreq, decayTime, e) {
             if (!audioCtx) return;
-            const rect = e.currentTarget.getBoundingClientRect();
-            const x = e.clientX - rect.left - rect.width / 2;
-            const y = e.clientY - rect.top - rect.height / 2;
-            const distance = Math.sqrt(x*x + y*y);
-            const isCenter = distance < (rect.width / 2) * 0.65;
-
-            // リアルなドラムの響きを作るパラメータ
-            const params = {
-                high: { base: 440, centerMod: 0.8, edgeMod: 1.6, decay: 0.15 },
-                low: { base: 180, centerMod: 0.7, edgeMod: 1.4, decay: 0.25 }
-            }[drumType];
-
-            const freq = isCenter ? params.base * params.centerMod : params.base * params.edgeMod;
-            const decay = isCenter ? params.decay : params.decay * 0.5;
-            const harmonic = isCenter ? 1.5 : 2.7; // 倍音の混ざり具合
-
-            playOrganicDrum(freq, decay, harmonic, isCenter);
-        }
-
-        function playOrganicDrum(freq, decay, harmonic, isCenter) {
+            e.preventDefault();
             const now = audioCtx.currentTime;
-            
-            // 1. 基音（革の揺れ）
-            const osc = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
-            osc.type = 'sine'; // 芯のある音
-            osc.frequency.setValueAtTime(freq, now);
-            osc.frequency.exponentialRampToValueAtTime(freq * 0.5, now + decay);
-            gain.gain.setValueAtTime(0.6, now);
-            gain.gain.exponentialRampToValueAtTime(0.001, now + decay);
-            
-            // 2. モジュレーター（木胴の響き/濁りを作る）
-            const mod = audioCtx.createOscillator();
-            const modGain = audioCtx.createGain();
-            mod.type = 'triangle';
-            mod.frequency.setValueAtTime(freq * harmonic, now);
-            modGain.gain.setValueAtTime(freq * 0.5, now);
-            modGain.gain.exponentialRampToValueAtTime(0.001, now + decay);
-            
-            mod.connect(modGain);
-            modGain.connect(osc.frequency); // 音を震わせる
 
-            // 3. アタック音（指が当たる「パシッ」という瞬間）
-            const snap = audioCtx.createOscillator();
-            const snapGain = audioCtx.createGain();
-            snap.type = 'square';
-            snap.frequency.setValueAtTime(1000, now);
-            snapGain.gain.setValueAtTime(isCenter ? 0.05 : 0.2, now);
-            snapGain.gain.exponentialRampToValueAtTime(0.001, now + 0.02);
+            // 1. 【アタック】叩いた瞬間の「カッ」という硬い音
+            const oscAttack = audioCtx.createOscillator();
+            const gainAttack = audioCtx.createGain();
+            oscAttack.type = 'sine';
+            oscAttack.frequency.setValueAtTime(baseFreq * 4, now);
+            oscAttack.frequency.exponentialRampToValueAtTime(baseFreq, now + 0.05);
+            gainAttack.gain.setValueAtTime(0.8, now);
+            gainAttack.gain.exponentialRampToValueAtTime(0.01, now + 0.05);
+            oscAttack.connect(gainAttack);
+            gainAttack.connect(audioCtx.destination);
 
-            osc.connect(gain);
-            snap.connect(snapGain);
-            gain.connect(audioCtx.destination);
-            snapGain.connect(audioCtx.destination);
-
-            osc.start(); mod.start(); snap.start();
-            osc.stop(now + decay); mod.stop(now + decay); snap.stop(now + 0.02);
-        }
-        window.addEventListener('touchstart', (e) => e.preventDefault(), { passive: false });
-    </script>
-</body>
-</html>
+            // 2. 【ボディ】胴が鳴る「ドゥン」という低い響き
+            const oscBody = audioCtx.createOscillator();
+            const gainBody = audioCtx.createGain();
+            oscBody.type = 'triangle';
+            oscBody.frequency.setValueAtTime(baseFreq, now);
+            oscBody.frequency.exponentialRampToValueAtTime(baseFreq * 0.5, now + decayTime);
+            gainBody.gain.setValueAtTime(0.5, now);
+            gainBody.gain.exponentialRampToValueAtTime(0.001, now +
