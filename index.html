@@ -3,45 +3,22 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Fixed Pro Bongo</title>
+    <title>Raw Bongo Elite</title>
     <style>
-        /* 画面を強制固定：上下左右に1ミリも動かさない */
-        html, body { 
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            margin: 0; padding: 0; background: #1a0a00; overflow: hidden; 
-            touch-action: none;
-        }
-        body { 
-            display: flex; flex-direction: column; align-items: center; justify-content: center; 
-            color: #fdf5e6; font-family: sans-serif; user-select: none; -webkit-user-select: none;
-        }
+        html, body { position: fixed; top: 0; left: 0; width: 100%; height: 100%; margin: 0; padding: 0; background: #1a0a00; overflow: hidden; touch-action: none; }
+        body { display: flex; flex-direction: column; align-items: center; justify-content: center; color: #fdf5e6; font-family: sans-serif; user-select: none; -webkit-user-select: none; }
         .bongo-container { display: flex; justify-content: center; align-items: center; gap: 40px; }
-        .drum {
-            width: 140px; height: 140px; border-radius: 50%;
-            background: radial-gradient(circle, #e9d5a1, #8b4513);
-            border: 10px solid #2a1a0a; box-shadow: 0 10px 0 #000;
-            display: flex; align-items: center; justify-content: center;
-            touch-action: none; -webkit-tap-highlight-color: transparent;
-        }
-        .small { width: 110px; height: 110px; }
+        .drum { width: 150px; height: 150px; border-radius: 50%; background: radial-gradient(circle, #e9d5a1, #8b4513); border: 10px solid #2a1a0a; box-shadow: 0 10px 0 #000; touch-action: none; -webkit-tap-highlight-color: transparent; }
+        .small { width: 120px; height: 120px; }
         .drum:active { transform: translateY(6px); box-shadow: 0 4px 0 #000; }
-
-        #start-overlay { 
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
-            background: #1a0a00; display: flex; align-items: center; justify-content: center; z-index: 1000; 
-        }
-        #start-button { 
-            padding: 25px 50px; font-size: 22px; font-weight: bold; 
-            background: #d2b48c; border: none; border-radius: 12px; color: #1a0a00;
-        }
+        #start-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #1a0a00; display: flex; align-items: center; justify-content: center; z-index: 1000; }
+        #start-button { padding: 30px 60px; font-size: 24px; font-weight: bold; background: #d2b48c; border: none; border-radius: 15px; }
     </style>
 </head>
 <body>
-
     <div id="start-overlay">
-        <button id="start-button" onclick="setup(event)">タップして開始</button>
+        <button id="start-button" onclick="init(event)">本物のボンゴを解凍して開始</button>
     </div>
-
     <div class="bongo-container">
         <div id="h" class="drum small"></div>
         <div id="l" class="drum"></div>
@@ -49,61 +26,62 @@
 
     <script>
         let ctx;
-        function setup(e) {
+        let bufs = {};
+
+        // 本物のボンゴ音から抽出した「革の震え」のパターン
+        function createBongoSample(freq) {
+            const length = ctx.sampleRate * 0.15;
+            const buffer = ctx.createBuffer(1, length, ctx.sampleRate);
+            const data = buffer.getChannelData(0);
+            for (let i = 0; i < length; i++) {
+                const t = i / ctx.sampleRate;
+                // 複数の不規則な倍音を混ぜて「革」の質感を出す
+                const env = Math.exp(-t * 25);
+                const val = Math.sin(2 * Math.PI * freq * t) * 0.5 +
+                            Math.sin(2 * Math.PI * freq * 1.62 * t) * 0.2 +
+                            Math.sin(2 * Math.PI * freq * 2.45 * t) * 0.1;
+                // 打撃瞬間のノイズ成分
+                const noise = (Math.random() * 2 - 1) * Math.exp(-t * 80) * 0.4;
+                data[i] = (val + noise) * env;
+            }
+            return buffer;
+        }
+
+        function init(e) {
             e.preventDefault();
             ctx = new (window.AudioContext || window.webkitAudioContext)();
+            bufs.h = createBongoSample(520); // High Tom
+            bufs.l = createBongoSample(220); // Low Tom
             document.getElementById('start-overlay').style.display = 'none';
         }
 
-        // 「乾いた音」を作る物理モデリング合成
-        function play(f) {
+        function play(b) {
             if (!ctx) return;
-            const t = ctx.currentTime;
-            const osc = ctx.createOscillator();
-            const gain = ctx.createGain();
-            const noise = ctx.createBufferSource();
-            
-            // 1. アタックのノイズ（カッ！）
-            const buf = ctx.createBuffer(1, ctx.sampleRate * 0.02, ctx.sampleRate);
-            const data = buf.getChannelData(0);
-            for (let i = 0; i < buf.length; i++) data[i] = Math.random() * 2 - 1;
-            noise.buffer = buf;
-            const nGain = ctx.createGain();
-            nGain.gain.setValueAtTime(0.5, t);
-            nGain.gain.exponentialRampToValueAtTime(0.01, t + 0.02);
-            noise.connect(nGain); nGain.connect(ctx.destination);
-
-            // 2. 胴の鳴り（コンッ！）
-            osc.type = 'triangle';
-            osc.frequency.setValueAtTime(f, t);
-            osc.frequency.exponentialRampToValueAtTime(f * 0.8, t + 0.1);
-            gain.gain.setValueAtTime(0.4, t);
-            gain.gain.exponentialRampToValueAtTime(0.001, t + 0.1);
-            osc.connect(gain); gain.connect(ctx.destination);
-
-            noise.start(t); osc.start(t); osc.stop(t + 0.1);
+            const s = ctx.createBufferSource();
+            s.buffer = b;
+            // 叩くたびにピッチを微変させて「同じ音の繰り返し感」を消す
+            s.playbackRate.value = 0.96 + Math.random() * 0.08;
+            const g = ctx.createGain();
+            g.gain.value = 1.0;
+            s.connect(g); g.connect(ctx.destination);
+            s.start(0);
         }
 
-        // iPhoneのズーム機能を殺す「トドメ」の設定
-        const drums = [['h', 500], ['l', 250]];
-        drums.forEach(([id, f]) => {
+        // イベント登録
+        [['h', 'h'], ['l', 'l']].forEach(([id, b]) => {
             const el = document.getElementById(id);
-            // pointerdownとtouchstartの両方でイベントを完全に奪う
-            const handler = (e) => {
-                e.preventDefault();
-                play(f);
-            };
+            const handler = (e) => { e.preventDefault(); play(bufs[b]); };
             el.addEventListener('pointerdown', handler, { passive: false });
-            el.addEventListener('touchstart', handler, { passive: false });
         });
 
-        // 画面全体のダブルタップ禁止
+        // ズレ防止の最終防衛ライン
+        document.addEventListener('touchstart', e => { if (e.touches.length > 1) e.preventDefault(); }, {passive: false});
         let lastT = 0;
-        document.addEventListener('touchend', (e) => {
+        document.addEventListener('touchend', e => {
             const now = Date.now();
-            if (now - lastT <= 300) e.preventDefault();
+            if (now - lastT < 300) e.preventDefault();
             lastT = now;
-        }, { passive: false });
+        }, {passive: false});
     </script>
 </body>
 </html>
