@@ -3,140 +3,126 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Dub Sampler 9</title>
+    <title>Dub Sampler 9 Fixed</title>
     <style>
-        * { touch-action: none !important; -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
-        html, body { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; margin: 0; padding: 0; background: #000; overflow: hidden; overscroll-behavior: none; }
-        body { display: flex; flex-direction: column; align-items: center; justify-content: center; color: #fff; font-family: 'Courier New', Courier, monospace; user-select: none; -webkit-user-select: none; }
+        /* 基本は全固定 */
+        * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
+        html, body { 
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; 
+            margin: 0; padding: 0; background: #000; overflow: hidden; overscroll-behavior: none;
+        }
+        body { display: flex; flex-direction: column; align-items: center; justify-content: center; color: #fff; font-family: monospace; }
         
-        h1 { font-size: 18px; color: #0f0; margin-bottom: 20px; text-shadow: 0 0 5px #0f0; letter-spacing: 2px; }
+        /* スタート画面：iPhoneの標準的な挙動を邪魔しないようにする */
+        #start-overlay { 
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+            background: #000; display: flex; align-items: center; justify-content: center; z-index: 2000; 
+            /* ここでは touch-action をあえて指定しない */
+        }
+        #start-button { 
+            padding: 30px 60px; font-size: 22px; font-weight: bold; 
+            background: #0f0; border: none; border-radius: 8px; color: #000; 
+            box-shadow: 0 0 20px #0f0; cursor: pointer;
+            /* iPhoneが「普通のボタン」として認識しやすくする */
+            display: block;
+        }
 
-        /* 3x3 パッドレイアウト */
         .pad-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 15px;
-            width: 90%;
-            max-width: 350px;
+            display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px;
+            width: 90%; max-width: 350px;
+            /* 演奏画面になったら動かないようにする */
+            touch-action: none !important;
         }
-
         .pad {
-            aspect-ratio: 1 / 1;
-            background: #222;
-            border: 3px solid #444;
-            border-radius: 8px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            font-size: 10px;
-            font-weight: bold;
-            color: #888;
-            transition: all 0.05s;
+            aspect-ratio: 1 / 1; background: #222; border: 3px solid #444; border-radius: 8px;
+            display: flex; align-items: center; justify-content: center; font-size: 11px; color: #888;
         }
-
-        /* 叩いた時の演出 */
-        .pad:active {
-            transform: scale(0.95);
-            background: #0f0;
-            color: #000;
-            box-shadow: 0 0 15px #0f0;
-            border-color: #fff;
-        }
-
-        #start-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #000; display: flex; align-items: center; justify-content: center; z-index: 1000; }
-        #start-button { padding: 30px 60px; font-size: 20px; font-weight: bold; background: #0f0; border: none; border-radius: 5px; color: #000; box-shadow: 0 0 20px #0f0; }
+        .pad:active { background: #0f0; color: #000; transform: scale(0.95); }
     </style>
 </head>
 <body>
 
     <div id="start-overlay">
-        <button id="start-button" onclick="init(event)">DUB STATION START</button>
+        <button id="start-button" onclick="initApp()">DUB START</button>
     </div>
 
-    <h1>DUB SOUND SYSTEM</h1>
-
     <div class="pad-grid">
-        <div class="pad" data-sound="laser">LASER</div>
-        <div class="pad" data-sound="siren">SIREN</div>
-        <div class="pad" data-sound="ufo">UFO</div>
-        <div class="pad" data-sound="rim">RIM</div>
-        <div class="pad" data-sound="tom">LOW TOM</div>
-        <div class="pad" data-sound="clap">CLAP</div>
-        <div class="pad" data-sound="noise">NOISE</div>
-        <div class="pad" data-sound="drop">DROP</div>
-        <div class="pad" data-sound="dub">ECHO</div>
+        <div class="pad" onpointerdown="play('laser', event)">LASER</div>
+        <div class="pad" onpointerdown="play('siren', event)">SIREN</div>
+        <div id="ufo" class="pad" onpointerdown="play('ufo', event)">UFO</div>
+        <div class="pad" onpointerdown="play('rim', event)">RIM</div>
+        <div class="pad" onpointerdown="play('tom', event)">TOM</div>
+        <div class="pad" onpointerdown="play('clap', event)">CLAP</div>
+        <div class="pad" onpointerdown="play('noise', event)">NOISE</div>
+        <div class="pad" onpointerdown="play('drop', event)">DROP</div>
+        <div class="pad" onpointerdown="play('dub', event)">ECHO</div>
     </div>
 
     <script>
         let ctx;
-        function init(e) {
-            e.preventDefault();
+        function initApp() {
+            // 音声コンテキストの作成（ユーザーのクリックがトリガー）
             ctx = new (window.AudioContext || window.webkitAudioContext)();
+            if (ctx.state === 'suspended') ctx.resume();
             document.getElementById('start-overlay').style.display = 'none';
         }
 
-        // --- 乾いたダブ・サウンドを生成するエンジン ---
-        const playSound = (type) => {
+        function play(type, e) {
             if (!ctx) return;
+            // 演奏中はズレを徹底防止
+            if (e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+            
             const t = ctx.currentTime;
             const g = ctx.createGain();
-            const osc = ctx.createOscillator();
+            const o = ctx.createOscillator();
             
-            switch(type) {
-                case 'laser': // バキューン！
-                    osc.frequency.setValueAtTime(1200, t);
-                    osc.frequency.exponentialRampToValueAtTime(50, t + 0.2);
-                    g.gain.setValueAtTime(0.5, t);
-                    g.gain.exponentialRampToValueAtTime(0.01, t + 0.2);
-                    osc.start(); osc.stop(t + 0.2);
-                    break;
-                case 'siren': // ポワンッ！
-                    osc.frequency.setValueAtTime(400, t);
-                    osc.frequency.exponentialRampToValueAtTime(800, t + 0.1);
-                    osc.frequency.exponentialRampToValueAtTime(400, t + 0.2);
-                    g.gain.setValueAtTime(0.4, t);
-                    g.gain.exponentialRampToValueAtTime(0.01, t + 0.2);
-                    osc.start(); osc.stop(t + 0.2);
-                    break;
-                case 'ufo': // ギュイーン
-                    osc.type = 'sawtooth';
-                    osc.frequency.setValueAtTime(100, t);
-                    osc.frequency.linearRampToValueAtTime(1000, t + 0.3);
-                    g.gain.setValueAtTime(0.3, t);
-                    g.gain.exponentialRampToValueAtTime(0.01, t + 0.3);
-                    osc.start(); osc.stop(t + 0.3);
-                    break;
-                case 'rim': // 乾いたリムショット
-                    const n = ctx.createOscillator();
-                    n.type = 'triangle';
-                    n.frequency.setValueAtTime(800, t);
-                    g.gain.setValueAtTime(0.5, t);
-                    g.gain.exponentialRampToValueAtTime(0.01, t + 0.05);
-                    n.connect(g); n.start(); n.stop(t + 0.05);
-                    break;
-                case 'tom': // 低いタム（ダブの基本）
-                    osc.frequency.setValueAtTime(150, t);
-                    osc.frequency.exponentialRampToValueAtTime(60, t + 0.2);
-                    g.gain.setValueAtTime(0.8, t);
-                    g.gain.exponentialRampToValueAtTime(0.01, t + 0.2);
-                    osc.start(); osc.stop(t + 0.2);
-                    break;
-                case 'clap': // 乾いたクラップ
-                    const buf = ctx.createBuffer(1, ctx.sampleRate * 0.1, ctx.sampleRate);
-                    const d = buf.getChannelData(0);
-                    for (let i = 0; i < buf.length; i++) d[i] = (Math.random() * 2 - 1) * Math.exp(-i / 1000);
-                    const src = ctx.createBufferSource();
-                    src.buffer = buf;
-                    src.connect(g); src.start();
-                    g.gain.setValueAtTime(0.6, t);
-                    g.gain.exponentialRampToValueAtTime(0.01, t + 0.1);
-                    break;
-                case 'noise': // ホワイトノイズ・スネア
-                    const b2 = ctx.createBuffer(1, ctx.sampleRate * 0.05, ctx.sampleRate);
-                    const d2 = b2.getChannelData(0);
-                    for (let i = 0; i < b2.length; i++) d2[i] = Math.random() * 2 - 1;
-                    const s2 = ctx.createBufferSource();
-                    s2.buffer = b2;
-                    s2.connect(g); s2.start();
-                    g.gain.setValueAt
+            // 乾いたダブ音源（パラメータ調整）
+            if(type === 'laser') {
+                o.frequency.setValueAtTime(1000, t);
+                o.frequency.exponentialRampToValueAtTime(10, t + 0.2);
+                g.gain.setValueAtTime(0.4, t);
+            } else if(type === 'siren') {
+                o.frequency.setValueAtTime(400, t);
+                o.frequency.exponentialRampToValueAtTime(800, t + 0.1);
+                o.frequency.exponentialRampToValueAtTime(400, t + 0.2);
+                g.gain.setValueAtTime(0.3, t);
+            } else if(type === 'tom') {
+                o.frequency.setValueAtTime(120, t);
+                o.frequency.exponentialRampToValueAtTime(40, t + 0.2);
+                g.gain.setValueAtTime(0.7, t);
+            } else if(type === 'dub') {
+                o.frequency.setValueAtTime(500, t);
+                g.gain.setValueAtTime(0.3, t);
+                g.gain.linearRampToValueAtTime(0, t + 0.4);
+            } else {
+                // その他（簡易版）
+                o.frequency.setValueAtTime(600, t);
+                g.gain.setValueAtTime(0.3, t);
+            }
+
+            g.gain.exponentialRampToValueAtTime(0.01, t + 0.3);
+            o.connect(g); g.connect(ctx.destination);
+            o.start(); o.stop(t + 0.3);
+        }
+
+        // 演奏画面でのズレ防止の最終防衛
+        document.addEventListener('touchstart', (e) => {
+            // オーバーレイ（スタート画面）が表示されている時は何もしない
+            if (document.getElementById('start-overlay').style.display === 'none') {
+                if (e.touches.length > 1) e.preventDefault();
+            }
+        }, { passive: false });
+
+        // ダブルタップズームの強制無効化
+        let lastT = 0;
+        document.addEventListener('touchend', (e) => {
+            const now = Date.now();
+            if (now - lastT < 300) e.preventDefault();
+            lastT = now;
+        }, { passive: false });
+    </script>
+</body>
+</html>
