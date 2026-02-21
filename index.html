@@ -3,51 +3,69 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Real Bongo</title>
+    <title>Ultimate Bongo</title>
     <style>
-        body { text-align: center; background: #fdf5e6; font-family: sans-serif; touch-action: manipulation; }
-        .bongo-container { display: flex; justify-content: center; gap: 20px; margin-top: 50px; }
+        body { text-align: center; background: #332211; color: #fdf5e6; font-family: sans-serif; touch-action: manipulation; margin: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; }
+        h1 { margin-top: 0; font-size: 24px; color: #d2b48c; }
+        .bongo-container { display: flex; justify-content: center; gap: 30px; }
         .drum {
-            width: 150px; height: 150px; border-radius: 50%;
-            background: radial-gradient(circle, #d2b48c, #8b4513);
-            border: 8px solid #333; box-shadow: 0 10px 0 #555;
+            width: 140px; height: 140px; border-radius: 50%;
+            background: radial-gradient(circle, #ecd8a5 30%, #8b4513 100%);
+            border: 10px solid #221100; box-shadow: 0 12px 0 #110800;
             cursor: pointer; display: flex; align-items: center; justify-content: center;
-            font-weight: bold; font-size: 20px; color: rgba(0,0,0,0.3);
-            -webkit-tap-highlight-color: transparent;
+            font-weight: bold; font-size: 18px; color: rgba(0,0,0,0.4);
+            -webkit-tap-highlight-color: transparent; transition: transform 0.05s;
         }
-        .drum:active { transform: translateY(5px); box-shadow: 0 5px 0 #555; background: #8b4513; }
-        .small { width: 120px; height: 120px; margin-top: 15px; }
+        .drum:active { transform: translateY(8px); box-shadow: 0 4px 0 #110800; }
+        .small { width: 110px; height: 110px; margin-top: 15px; }
+        #start-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); display: flex; align-items: center; justify-content: center; z-index: 100; }
+        #start-button { padding: 20px 40px; font-size: 20px; font-weight: bold; background: #d2b48c; border: none; border-radius: 50px; color: #332211; cursor: pointer; }
     </style>
 </head>
 <body>
-    <h1>🪘 REAL BONGO 🪘</h1>
-    <button id="startBtn" style="padding: 15px; font-size: 18px; margin: 20px; border-radius: 10px; background: #8b4513; color: white;">最初にここを押して音を許可！</button>
-    
-    <div class="bongo-container">
-        <div class="drum small" onclick="playSound('high')">HIGH</div>
-        <div class="drum" onclick="playSound('low')">LOW</div>
+
+    <div id="start-overlay">
+        <button id="start-button">タップしてボンゴを開始！</button>
     </div>
 
-    <script>
-        const sounds = {
-            high: new Audio('https://cdn.pixabay.com/audio/2022/03/10/audio_783d183c34.mp3'),
-            low: new Audio('https://cdn.pixabay.com/audio/2022/03/10/audio_276063943a.mp3')
-        };
+    <h1>🪘 REAL BONGO 🪘</h1>
+    
+    <div class="bongo-container">
+        <div class="drum small" onpointerdown="playBongo(800)">HIGH</div>
+        <div class="drum" onpointerdown="playBongo(200)">LOW</div>
+    </div>
 
-        const startBtn = document.getElementById('startBtn');
-        startBtn.addEventListener('click', () => {
-            // iPhoneで音を出すための「鍵」を開ける儀式
-            for (let key in sounds) {
-                sounds[key].play();
-                sounds[key].pause();
-                sounds[key].currentTime = 0;
-            }
-            startBtn.style.display = 'none'; // ボタンを消す
+    <p style="margin-top: 40px; font-size: 12px; opacity: 0.7;">※iPhoneはマナーモードを解除してね！</p>
+
+    <script>
+        let audioCtx = null;
+
+        // 最初のクリックでオーディオ機能を起動する（iPhone対策）
+        document.getElementById('start-button').addEventListener('click', () => {
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            document.getElementById('start-overlay').style.display = 'none';
         });
 
-        function playSound(type) {
-            const sound = sounds[type].cloneNode();
-            sound.play();
+        function playBongo(frequency) {
+            if (!audioCtx) return;
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+
+            // 音をその場で合成して鳴らす（音源ファイル不要！）
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+
+            osc.type = 'triangle'; // ボンゴに近い柔らかい音
+            osc.frequency.setValueAtTime(frequency, audioCtx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+
+            gain.gain.setValueAtTime(0.5, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.1);
         }
     </script>
 </body>
