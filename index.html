@@ -21,38 +21,34 @@
 </head>
 <body>
     <h1>🪘 REAL BONGO 🪘</h1>
-    <p>タップして演奏しよう！</p>
+    <button id="startBtn" style="padding: 15px; font-size: 18px; margin: 20px; border-radius: 10px; background: #8b4513; color: white;">最初にここを押して音を許可！</button>
     
     <div class="bongo-container">
-        <div class="drum small" onpointerdown="playSound('high')">HIGH</div>
-        <div class="drum" onpointerdown="playSound('low')">LOW</div>
+        <div class="drum small" onclick="playSound('high')">HIGH</div>
+        <div class="drum" onclick="playSound('low')">LOW</div>
     </div>
 
     <script>
-    // 音源の準備
-    const sounds = {
-        high: new Audio('https://cdn.pixabay.com/audio/2022/03/10/audio_783d183c34.mp3'), // ハイポコ
-        low: new Audio('https://cdn.pixabay.com/audio/2022/03/10/audio_276063943a.mp3')   // ローポコ
-    };
+        const sounds = {
+            high: new Audio('https://cdn.pixabay.com/audio/2022/03/10/audio_783d183c34.mp3'),
+            low: new Audio('https://cdn.pixabay.com/audio/2022/03/10/audio_276063943a.mp3')
+        };
 
-    // iPhoneのための「音出し許可」スイッチ
-    let isAudioEnabled = false;
-
-    function playSound(type) {
-        // 最初の1回目のタップで、iPhoneの音出し制限を解除する
-        if (!isAudioEnabled) {
+        const startBtn = document.getElementById('startBtn');
+        startBtn.addEventListener('click', () => {
+            // iPhoneで音を出すための「鍵」を開ける儀式
             for (let key in sounds) {
                 sounds[key].play();
                 sounds[key].pause();
                 sounds[key].currentTime = 0;
             }
-            isAudioEnabled = true;
-        }
+            startBtn.style.display = 'none'; // ボタンを消す
+        });
 
-        // 音を鳴らす（連続タップに対応）
-        const sound = sounds[type].cloneNode();
-        sound.play().catch(e => console.log("音が出せませんでした:", e));
-    }
-</script>
+        function playSound(type) {
+            const sound = sounds[type].cloneNode();
+            sound.play();
+        }
+    </script>
 </body>
 </html>
