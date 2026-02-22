@@ -1,161 +1,279 @@
 <!doctype html>
 <html lang="ja">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>AI Manzai LIVE</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <title>AI Manzai LIVE</title>
 
-<style>
-body{
-  margin:0;
-  background:#000;
-  color:#fff;
-  font-family:sans-serif;
-  display:flex;
-  flex-direction:column;
-  align-items:center;
-  justify-content:space-between;
-  height:100vh;
-  padding:40px 20px;
-}
+  <style>
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    html, body { margin: 0; padding: 0; background: #000; color: #fff; height: 100%; }
+    body {
+      font-family: system-ui, -apple-system, "Hiragino Kaku Gothic ProN", Meiryo, sans-serif;
+      overflow: hidden;
+      overscroll-behavior: none;
+      -webkit-touch-callout: none;
+      -webkit-user-select: none;
+      user-select: none;
+      touch-action: manipulation;
+    }
 
-.stage{
-  width:90%;
-  max-width:420px;
-  height:45%;
-  background:radial-gradient(circle at bottom,#333,#000);
-  border-bottom:8px solid #b00;
-  border-radius:20px;
-  display:flex;
-  justify-content:center;
-  align-items:flex-end;
-  gap:40px;
-  position:relative;
-}
+    .app {
+      width: 100vw;
+      height: 100vh;   /* fallback */
+      height: 100dvh;  /* iOS modern */
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      align-items: center;
+      padding:
+        calc(24px + env(safe-area-inset-top))
+        20px
+        calc(24px + env(safe-area-inset-bottom));
+      gap: 16px;
+    }
 
-.comic{
-  width:70px;
-  height:130px;
-  background:#fff;
-  border-radius:35px 35px 5px 5px;
-  transition:.12s;
-}
+    #caption-box {
+      width: min(560px, 95vw);
+      min-height: 140px;
+      background: rgba(255,255,255,0.10);
+      border: 2px solid #333;
+      border-radius: 18px;
+      padding: 18px 16px;
+      text-align: center;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.2rem;
+      line-height: 1.7;
+      color: #0f0;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
 
-.mic{
-  width:8px;
-  height:110px;
-  background:#777;
-  position:absolute;
-  bottom:0;
-  left:50%;
-  transform:translateX(-50%);
-}
+    .stage {
+      width: min(420px, 90vw);
+      height: 42dvh;
+      max-height: 380px;
+      background: radial-gradient(circle at bottom, #333, #000);
+      border-bottom: 8px solid #b00;
+      border-radius: 22px;
+      display: flex;
+      justify-content: center;
+      align-items: flex-end;
+      gap: 44px;
+      position: relative;
+      box-shadow: 0 0 60px rgba(0,0,0,0.6) inset;
+    }
 
-#caption{
-  width:95%;
-  min-height:130px;
-  background:rgba(255,255,255,.08);
-  border-radius:16px;
-  padding:18px;
-  text-align:center;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  color:#0f0;
-  font-size:1.2rem;
-}
+    .comic {
+      width: 74px;
+      height: 138px;
+      background: #fff;
+      border-radius: 38px 38px 8px 8px;
+      transform: translateY(0) scale(1);
+      transition: transform 0.12s ease;
+      will-change: transform;
+      box-shadow: 0 14px 30px rgba(0,0,0,0.35);
+    }
 
-button{
-  width:80%;
-  padding:22px;
-  border-radius:50px;
-  border:none;
-  font-size:18px;
-  font-weight:bold;
-  background:#d2b48c;
-  box-shadow:0 6px 0 #5d2e0c;
-}
-button:active{
-  transform:translateY(4px);
-  box-shadow:0 2px 0 #5d2e0c;
-}
-</style>
+    .mic {
+      width: 8px;
+      height: 112px;
+      background: #777;
+      position: absolute;
+      bottom: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 10;
+      border-radius: 4px;
+    }
+
+    #gen-btn {
+      width: min(560px, 80vw);
+      padding: 20px 18px;
+      font-size: 18px;
+      font-weight: 900;
+      border: none;
+      border-radius: 999px;
+      background: #d2b48c;
+      color: #1a0a00;
+      box-shadow: 0 6px 0 #5d2e0c;
+      cursor: pointer;
+      touch-action: manipulation;
+    }
+    #gen-btn:active { transform: translateY(4px); box-shadow: 0 2px 0 #5d2e0c; }
+    #gen-btn:disabled { background: #555; color: #888; box-shadow: none; cursor: not-allowed; }
+
+    /* 小さくデバッグ表示（必要なければ消してOK） */
+    #debug {
+      width: min(560px, 95vw);
+      font-size: 12px;
+      color: rgba(255,255,255,0.5);
+      text-align: center;
+      margin-top: -6px;
+      min-height: 16px;
+    }
+  </style>
 </head>
 
 <body>
+  <div class="app">
+    <div id="caption-box">ボタンを押すと、AIが新ネタを考え始めます</div>
 
-<div id="caption">ボタンを押すとAIがネタ生成します</div>
+    <div class="stage" aria-label="漫才ステージ">
+      <div id="ai-1" class="comic" aria-label="ボケ A"></div>
+      <div class="mic" aria-hidden="true"></div>
+      <div id="ai-2" class="comic" aria-label="ツッコミ B"></div>
+    </div>
 
-<div class="stage">
-<div id="a" class="comic"></div>
-<div class="mic"></div>
-<div id="b" class="comic"></div>
-</div>
+    <div id="debug"></div>
 
-<button onclick="go()">新ネタを生成する</button>
+    <button id="gen-btn" type="button">新ネタを生成する</button>
+  </div>
 
-<script>
+  <script>
+    // ===== ここだけ好みで編集OK（ネタの指示）=====
+    const PROMPT =
+      "あなたは日本一の漫才師です。ボケ(A)とツッコミ(B)の2人組による爆笑漫才を書いてください。ルール：1.必ず「A：」「B：」という形式で交互に話すこと。2.最後は必ず「もうええわ！」で締めること。3.文字数は短めでテンポ重視。";
 
-const PROMPT =
-"あなたは日本一の漫才師です。AとBの掛け合いで短い漫才を書いてください。必ずA: B:形式で最後は『もうええわ！』で終わる。";
+    // ===== 以下は基本そのまま =====
+    const box = document.getElementById('caption-box');
+    const btn = document.getElementById('gen-btn');
+    const debug = document.getElementById('debug');
 
-async function go(){
+    let isPlaying = false;
+    let timerIds = [];
 
-document.getElementById("caption").innerText="ネタ生成中...";
+    function clearTimers() {
+      timerIds.forEach(id => clearTimeout(id));
+      timerIds = [];
+    }
 
-try{
+    function setCaption(text) {
+      box.textContent = text;
+    }
 
-// ★安全版：自分のVercel APIを叩く
-const r = await fetch("/api/manzai",{
-method:"POST",
-headers:{ "Content-Type":"application/json" },
-body:JSON.stringify({ prompt:PROMPT })
-});
+    function setDebug(text) {
+      debug.textContent = text || "";
+    }
 
-const data = await r.json();
+    function bounce(id) {
+      const el = document.getElementById(id);
+      el.style.transform = "translateY(-18px) scale(1.05)";
+      const t = setTimeout(() => {
+        el.style.transform = "translateY(0) scale(1)";
+      }, 180);
+      timerIds.push(t);
+    }
 
-const text =
-data?.candidates?.[0]?.content?.parts?.[0]?.text;
+    // Geminiレスポンスからテキストを「壊れにくく」取り出す
+    function extractText(data) {
+      // 典型：candidates[0].content.parts = [{text:"..."}, {text:"..."}]
+      const parts = data?.candidates?.[0]?.content?.parts;
+      if (Array.isArray(parts)) {
+        const joined = parts.map(p => (p && typeof p.text === "string") ? p.text : "").join("");
+        if (joined && joined.trim()) return joined;
+      }
+      // 念のため別形
+      if (typeof data?.text === "string" && data.text.trim()) return data.text;
+      return "";
+    }
 
-if(!text) throw "AI返答なし";
+    async function generateManzai() {
+      if (isPlaying) return;
 
-play(text);
+      isPlaying = true;
+      btn.disabled = true;
+      clearTimers();
+      setDebug("");
+      setCaption("ネタを構築中...");
 
-}catch(e){
-document.getElementById("caption").innerText="エラー：API通信失敗";
-console.error(e);
-}
+      try {
+        const response = await fetch("/api/manzai", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ prompt: PROMPT })
+        });
 
-}
+        const rawText = await response.text(); // いったん生文字で受ける（JSON失敗も拾える）
+        let data;
+        try {
+          data = JSON.parse(rawText);
+        } catch {
+          throw new Error("APIがJSONを返していません：" + rawText.slice(0, 120));
+        }
 
-function play(t){
+        // 失敗時のヒントを少し出す
+        if (!response.ok) {
+          setDebug(`HTTP ${response.status} / ${response.statusText}`);
+          // サーバー側の {error:"..."} を表示
+          if (typeof data?.error === "string") throw new Error(data.error);
+          if (data?.error?.message) throw new Error(data.error.message);
+          throw new Error("APIエラー");
+        }
 
-const lines =
-t.split("\n").filter(x=>/^[AB][:：]/.test(x));
+        // Geminiのerrorがそのまま来るケース
+        if (data?.error?.message) throw new Error(data.error.message);
+        if (typeof data?.error === "string") throw new Error(data.error);
 
-let i=0;
+        const fullText = extractText(data);
+        if (!fullText || fullText.trim().length < 3) {
+          // candidatesなど全体の形だけデバッグに出す（短く）
+          setDebug("返答形式が想定外（candidatesなし等）");
+          throw new Error("AI返答なし");
+        }
 
-function next(){
+        const scriptLines = fullText
+          .split("\n")
+          .map(s => s.trim())
+          .filter(line => /^[AB][：:]/.test(line));
 
-if(i>=lines.length) return;
+        if (!scriptLines.length) {
+          // 抽出できなければ全文を短く出す
+          setCaption(fullText.slice(0, 180) + (fullText.length > 180 ? "…" : ""));
+          isPlaying = false;
+          btn.disabled = false;
+          return;
+        }
 
-const line=lines[i];
-document.getElementById("caption").innerText=line;
+        playManzai(scriptLines);
 
-const id=line.startsWith("A")?"a":"b";
-const el=document.getElementById(id);
+      } catch (err) {
+        console.error(err);
+        setCaption("エラー：API通信失敗");
+        setDebug(String(err?.message || err || ""));
+        isPlaying = false;
+        btn.disabled = false;
+      }
+    }
 
-el.style.transform="translateY(-20px)";
-setTimeout(()=>el.style.transform="translateY(0)",200);
+    function playManzai(lines) {
+      let i = 0;
 
-i++;
-setTimeout(next,2100);
-}
+      const showNextLine = () => {
+        if (i < lines.length) {
+          const line = lines[i];
+          setCaption(line);
 
-next();
-}
+          const targetId = line.startsWith("A") ? "ai-1" : "ai-2";
+          bounce(targetId);
 
-</script>
+          i++;
+          const t = setTimeout(showNextLine, 2200);
+          timerIds.push(t);
+        } else {
+          isPlaying = false;
+          btn.disabled = false;
+          setDebug("");
+        }
+      };
 
+      showNextLine();
+    }
+
+    btn.addEventListener("click", generateManzai);
+  </script>
 </body>
 </html>
