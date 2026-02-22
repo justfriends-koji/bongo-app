@@ -1,249 +1,259 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="ja">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport"
-        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <title>AI Manzai LIVE</title>
-
   <style>
-    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-    html, body { margin: 0; padding: 0; background: #000; color: #fff; height: 100%; }
-    body {
-      font-family: system-ui, -apple-system, "Hiragino Kaku Gothic ProN", Meiryo, sans-serif;
-      overflow: hidden;
-      overscroll-behavior: none;
-      -webkit-touch-callout: none;
-      -webkit-user-select: none;
-      user-select: none;
-      touch-action: manipulation;
-    }
+    /* iPhone Safari対策（固定表示） */
+    * { touch-action: none !important; -webkit-tap-highlight-color: transparent; box-sizing: border-box; overscroll-behavior: none !important; }
+    html, body { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; margin: 0; padding: 0; background: #000; overflow: hidden !important; }
+    body { display: flex; flex-direction: column; align-items: center; justify-content: space-between; padding: 26px 18px; color: #fff; font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif; gap: 14px; }
 
-    .app {
-      width: 100vw;
-      height: 100vh;   /* fallback */
-      height: 100dvh;  /* iOS modern */
-      display: flex;
-      flex-direction: column;
-      justify-content: space-between;
-      align-items: center;
-      padding:
-        calc(24px + env(safe-area-inset-top))
-        20px
-        calc(24px + env(safe-area-inset-bottom));
-      gap: 16px;
+    /* テーマ入力 */
+    .theme-wrap { width: 95%; max-width: 520px; display: flex; gap: 10px; align-items: center; justify-content: center; }
+    #theme {
+      flex: 1;
+      height: 52px;
+      border-radius: 14px;
+      border: 2px solid #222;
+      background: rgba(255,255,255,0.08);
+      color: #fff;
+      padding: 0 14px;
+      font-size: 16px;
+      outline: none;
     }
+    #theme::placeholder { color: rgba(255,255,255,0.45); }
 
+    #theme-btn {
+      width: 110px;
+      height: 52px;
+      border: none;
+      border-radius: 14px;
+      background: #333;
+      color: #fff;
+      font-weight: 700;
+      font-size: 15px;
+      box-shadow: 0 4px 0 #111;
+    }
+    #theme-btn:active { transform: translateY(3px); box-shadow: 0 1px 0 #111; }
+
+    /* セリフ表示エリア */
     #caption-box {
-      width: min(560px, 95vw);
+      width: 95%;
+      max-width: 520px;
       min-height: 140px;
-      background: rgba(255,255,255,0.10);
+      background: rgba(255,255,255,0.1);
       border: 2px solid #333;
-      border-radius: 18px;
-      padding: 18px 16px;
+      border-radius: 15px;
+      padding: 18px 18px;
       text-align: center;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 1.2rem;
-      line-height: 1.7;
+      font-size: 1.15rem;
+      line-height: 1.65;
       color: #0f0;
-      white-space: pre-wrap;
-      word-break: break-word;
+      position: relative;
+    }
+    #caption-sub {
+      position: absolute;
+      bottom: 8px;
+      left: 12px;
+      right: 12px;
+      font-size: 12px;
+      color: rgba(255,255,255,0.55);
+      text-align: center;
+      pointer-events: none;
     }
 
+    /* 漫才ステージ */
     .stage {
-      width: min(420px, 90vw);
-      height: 42dvh;
-      max-height: 380px;
+      width: 95%;
+      max-width: 520px;
+      height: 44%;
       background: radial-gradient(circle at bottom, #333, #000);
       border-bottom: 8px solid #b00;
-      border-radius: 22px;
+      border-radius: 20px;
       display: flex;
       justify-content: center;
       align-items: flex-end;
-      gap: 44px;
+      gap: 40px;
       position: relative;
-      box-shadow: 0 0 60px rgba(0,0,0,0.6) inset;
+      overflow: hidden;
     }
+    .comic { width: 70px; height: 130px; background: #fff; border-radius: 35px 35px 5px 5px; position: relative; transition: transform 0.1s; }
+    .mic { width: 8px; height: 110px; background: #777; position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); z-index: 10; border-radius: 4px; }
 
-    .comic {
-      width: 74px;
-      height: 138px;
-      background: #fff;
-      border-radius: 38px 38px 8px 8px;
-      transform: translateY(0) scale(1);
-      transition: transform 0.12s ease;
-      will-change: transform;
-      box-shadow: 0 14px 30px rgba(0,0,0,0.35);
-    }
-
-    .mic {
-      width: 8px;
-      height: 112px;
-      background: #777;
-      position: absolute;
-      bottom: 0;
-      left: 50%;
-      transform: translateX(-50%);
-      z-index: 10;
-      border-radius: 4px;
-    }
-
+    /* 操作ボタン */
     #gen-btn {
-      width: min(560px, 80vw);
-      padding: 20px 18px;
-      font-size: 18px;
-      font-weight: 900;
+      width: 90%;
+      max-width: 520px;
+      padding: 22px;
+      font-size: 20px;
+      font-weight: bold;
       border: none;
-      border-radius: 999px;
+      border-radius: 50px;
       background: #d2b48c;
       color: #1a0a00;
       box-shadow: 0 6px 0 #5d2e0c;
-      cursor: pointer;
-      touch-action: manipulation;
     }
     #gen-btn:active { transform: translateY(4px); box-shadow: 0 2px 0 #5d2e0c; }
-    #gen-btn:disabled { background: #555; color: #888; box-shadow: none; cursor: not-allowed; }
+    #gen-btn:disabled { background: #555; color: #888; box-shadow: none; }
 
-    /* 小さくデバッグ表示（必要なければ消してOK） */
-    #debug {
-      width: min(560px, 95vw);
-      font-size: 12px;
-      color: rgba(255,255,255,0.5);
-      text-align: center;
-      margin-top: -6px;
-      min-height: 16px;
+    /* ローディング */
+    .spinner {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border: 2px solid rgba(0,255,0,0.25);
+      border-top-color: rgba(0,255,0,0.9);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      vertical-align: -3px;
+      margin-left: 10px;
     }
+    @keyframes spin { to { transform: rotate(360deg); } }
   </style>
 </head>
 
 <body>
-  <div class="app">
-    <div id="caption-box">ボタンを押すと、AIが新ネタを考え始めます</div>
-
-    <div class="stage" aria-label="漫才ステージ">
-      <div id="ai-1" class="comic" aria-label="ボケ A"></div>
-      <div class="mic" aria-hidden="true"></div>
-      <div id="ai-2" class="comic" aria-label="ツッコミ B"></div>
-    </div>
-
-    <div id="debug"></div>
-
-    <button id="gen-btn" type="button">新ネタを生成する</button>
+  <!-- テーマ入力 -->
+  <div class="theme-wrap">
+    <input id="theme" type="text" inputmode="text" placeholder="テーマを入力（例：コンビニ、転職、確定申告、猫…）" autocomplete="off" />
+    <button id="theme-btn" onclick="setRandomTheme()">例を入れる</button>
   </div>
 
+  <div id="caption-box">
+    テーマを入れて「新ネタを生成する」を押してください
+    <div id="caption-sub"></div>
+  </div>
+
+  <div class="stage">
+    <div id="ai-1" class="comic"></div>
+    <div class="mic"></div>
+    <div id="ai-2" class="comic"></div>
+  </div>
+
+  <button id="gen-btn" onclick="generateManzai()">新ネタを生成する</button>
+
   <script>
-    // ===== ここだけ好みで編集OK（ネタの指示）=====
-    const PROMPT =
-      "あなたは日本一の漫才師です。ボケ(A)とツッコミ(B)の2人組による爆笑漫才を書いてください。ルール：1.必ず「A：」「B：」という形式で交互に話すこと。2.最後は必ず「もうええわ！」で締めること。3.文字数は短めでテンポ重視。";
+    // ====== テーマ入力 → プロンプト組み立て ======
 
-    // ===== 以下は基本そのまま =====
-    const box = document.getElementById('caption-box');
-    const btn = document.getElementById('gen-btn');
-    const debug = document.getElementById('debug');
+    const BASE_RULES = [
+      "あなたは日本一の漫才師です。",
+      "ボケをA、ツッコミをBとする2人組の爆笑漫才を書いてください。",
+      "ルール：",
+      "1. 必ず「A：」「B：」形式で交互に話す（A→B→A→B…）。",
+      "2. テンポ重視で短め。",
+      "3. 最後は必ず「もうええわ！」で締める。",
+      "4. Aはボケ、Bは的確で面白いツッコミ。",
+      "5. 余計な前置き・解説・タイトルは書かず、セリフ行だけ出力する。",
+    ].join("\n");
 
+    // テーマが空でも動くように候補
+    const THEME_SAMPLES = [
+      "コンビニのレジ",
+      "引っ越し当日",
+      "確定申告",
+      "猫と暮らす",
+      "中古オーディオ沼",
+      "スマホのアップデート",
+      "深夜のラーメン",
+      "花粉症",
+      "ダイエット",
+      "ヤフオクの出品あるある"
+    ];
+
+    function buildPrompt(themeText) {
+      const theme = (themeText || "").trim();
+      const usedTheme = theme.length ? theme : THEME_SAMPLES[Math.floor(Math.random() * THEME_SAMPLES.length)];
+
+      return [
+        BASE_RULES,
+        "",
+        `今回のテーマ：${usedTheme}`,
+        "テーマに必ず触れて、あるある→ズレ→回収の流れで笑いを作ってください。",
+      ].join("\n");
+    }
+
+    function setRandomTheme() {
+      const el = document.getElementById("theme");
+      el.value = THEME_SAMPLES[Math.floor(Math.random() * THEME_SAMPLES.length)];
+      el.focus();
+    }
+
+    // ====== 再生制御 ======
     let isPlaying = false;
-    let timerIds = [];
+    let timers = [];
 
     function clearTimers() {
-      timerIds.forEach(id => clearTimeout(id));
-      timerIds = [];
+      timers.forEach(t => clearTimeout(t));
+      timers = [];
     }
 
-    function setCaption(text) {
-      box.textContent = text;
-    }
-
-    function setDebug(text) {
-      debug.textContent = text || "";
-    }
-
-    function bounce(id) {
-      const el = document.getElementById(id);
-      el.style.transform = "translateY(-18px) scale(1.05)";
-      const t = setTimeout(() => {
-        el.style.transform = "translateY(0) scale(1)";
-      }, 180);
-      timerIds.push(t);
-    }
-
-    // Geminiレスポンスからテキストを「壊れにくく」取り出す
-    function extractText(data) {
-      // 典型：candidates[0].content.parts = [{text:"..."}, {text:"..."}]
-      const parts = data?.candidates?.[0]?.content?.parts;
-      if (Array.isArray(parts)) {
-        const joined = parts.map(p => (p && typeof p.text === "string") ? p.text : "").join("");
-        if (joined && joined.trim()) return joined;
-      }
-      // 念のため別形
-      if (typeof data?.text === "string" && data.text.trim()) return data.text;
-      return "";
+    function setCaption(text, sub = "") {
+      const box = document.getElementById("caption-box");
+      const subEl = document.getElementById("caption-sub");
+      box.firstChild.nodeValue = text; // 先頭テキストだけ更新
+      subEl.textContent = sub || "";
     }
 
     async function generateManzai() {
       if (isPlaying) return;
 
+      const theme = document.getElementById("theme").value;
+      const prompt = buildPrompt(theme);
+
+      const btn = document.getElementById("gen-btn");
       isPlaying = true;
       btn.disabled = true;
+
       clearTimers();
-      setDebug("");
-      setCaption("ネタを構築中...");
+      setCaption("ネタを構築中...", "サーバーに問い合わせ中");
+      // スピナー表示
+      const subEl = document.getElementById("caption-sub");
+      subEl.innerHTML = `サーバーに問い合わせ中<span class="spinner"></span>`;
 
       try {
+        // 安全版：ブラウザから直接Geminiへ行かず、自分の /api/manzai を叩く
         const response = await fetch("/api/manzai", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ prompt: PROMPT })
+          body: JSON.stringify({ prompt })
         });
 
-        const rawText = await response.text(); // いったん生文字で受ける（JSON失敗も拾える）
-        let data;
-        try {
-          data = JSON.parse(rawText);
-        } catch {
-          throw new Error("APIがJSONを返していません：" + rawText.slice(0, 120));
-        }
+        const data = await response.json().catch(() => ({}));
 
-        // 失敗時のヒントを少し出す
         if (!response.ok) {
-          setDebug(`HTTP ${response.status} / ${response.statusText}`);
-          // サーバー側の {error:"..."} を表示
-          if (typeof data?.error === "string") throw new Error(data.error);
-          if (data?.error?.message) throw new Error(data.error.message);
-          throw new Error("APIエラー");
+          const msg = data?.error?.message || data?.error || `HTTP ${response.status}`;
+          throw new Error(msg);
         }
-
-        // Geminiのerrorがそのまま来るケース
         if (data?.error?.message) throw new Error(data.error.message);
         if (typeof data?.error === "string") throw new Error(data.error);
 
-        const fullText = extractText(data);
-        if (!fullText || fullText.trim().length < 3) {
-          // candidatesなど全体の形だけデバッグに出す（短く）
-          setDebug("返答形式が想定外（candidatesなし等）");
-          throw new Error("AI返答なし");
+        const fullText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (!fullText || typeof fullText !== "string") {
+          throw new Error("AIの返答を取得できませんでした（レスポンス形式不明）");
         }
 
+        // セリフ行だけ抽出（A：/B：、半角:にも対応）
         const scriptLines = fullText
           .split("\n")
           .map(s => s.trim())
           .filter(line => /^[AB][：:]/.test(line));
 
         if (!scriptLines.length) {
-          // 抽出できなければ全文を短く出す
-          setCaption(fullText.slice(0, 180) + (fullText.length > 180 ? "…" : ""));
-          isPlaying = false;
-          btn.disabled = false;
-          return;
+          // もし形式が崩れたら全文を見せる（デバッグ）
+          throw new Error("セリフ形式（A：B：）が見つかりませんでした。");
         }
 
+        setCaption("開演！", theme.trim() ? `テーマ：${theme.trim()}` : "テーマ：自動");
         playManzai(scriptLines);
 
-      } catch (err) {
-        console.error(err);
-        setCaption("エラー：API通信失敗");
-        setDebug(String(err?.message || err || ""));
+      } catch (error) {
+        setCaption("エラー：API通信失敗", String(error?.message || error));
+        console.error(error);
         isPlaying = false;
         btn.disabled = false;
       }
@@ -251,29 +261,45 @@
 
     function playManzai(lines) {
       let i = 0;
+      const btn = document.getElementById("gen-btn");
 
-      const showNextLine = () => {
+      function showNextLine() {
         if (i < lines.length) {
           const line = lines[i];
           setCaption(line);
 
+          // 喋っている方をピョコッ
           const targetId = line.startsWith("A") ? "ai-1" : "ai-2";
-          bounce(targetId);
+          const el = document.getElementById(targetId);
+          el.style.transform = "translateY(-18px) scale(1.05)";
+          timers.push(setTimeout(() => { el.style.transform = "translateY(0) scale(1)"; }, 180));
 
           i++;
-          const t = setTimeout(showNextLine, 2200);
-          timerIds.push(t);
+          timers.push(setTimeout(showNextLine, 1900));
         } else {
           isPlaying = false;
           btn.disabled = false;
-          setDebug("");
+          setCaption("終演！もう一回どうぞ", "");
         }
-      };
+      }
 
       showNextLine();
     }
 
-    btn.addEventListener("click", generateManzai);
+    // ====== 画面ズレ対策（必要最小限） ======
+    window.addEventListener("scroll", () => window.scrollTo(0, 0));
+
+    // 連打/多点タップによるスクロール暴発対策（ただし入力は阻害しない）
+    let lastT = 0;
+    document.addEventListener("touchstart", e => {
+      const target = e.target;
+      // 入力欄では邪魔しない
+      if (target && (target.id === "theme")) return;
+
+      const now = Date.now();
+      if (now - lastT < 250 || e.touches.length > 1) e.preventDefault();
+      lastT = now;
+    }, { passive: false });
   </script>
 </body>
 </html>
