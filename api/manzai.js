@@ -19,7 +19,7 @@ return res.status(400).json({ error: "prompt missing" });
 }
 
 // ★ここが最新版モデル（重要）
-const MODEL = "gemini-1.5-flash-latest";
+const MODEL = "gemini-1.5-flash";
 
 // Gemini API呼び出し
 const r = await fetch(
