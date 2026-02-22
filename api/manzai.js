@@ -23,7 +23,7 @@ const MODEL = "gemini-1.5-flash-latest";
 
 // Gemini API呼び出し
 const r = await fetch(
-`https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${process.env.GEMINI_KEY}`,
+`https://generativelanguage.googleapis.com/v1/models/${MODEL}:generateContent?key=${process.env.GEMINI_KEY}`,
 {
 method: "POST",
 headers: { "Content-Type": "application/json" },
