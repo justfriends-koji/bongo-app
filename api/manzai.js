@@ -19,7 +19,7 @@ export default async function handler(req, res) {
     }
 
     // ★ここが重要：今使えるモデルに変更（公式例）
-    const MODEL = "gemini-2.0-flash";
+    const MODEL = "gemini-1.5-pro";
 
     const r = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${process.env.GEMINI_KEY}`,
