@@ -1,244 +1,161 @@
 <!doctype html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport"
-        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-  <title>AI Manzai LIVE</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI Manzai LIVE</title>
 
-  <style>
-    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+<style>
+body{
+  margin:0;
+  background:#000;
+  color:#fff;
+  font-family:sans-serif;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:space-between;
+  height:100vh;
+  padding:40px 20px;
+}
 
-    html, body {
-      margin: 0;
-      padding: 0;
-      background: #000;
-      color: #fff;
-      font-family: system-ui, -apple-system, "Hiragino Kaku Gothic ProN", Meiryo, sans-serif;
-      height: 100%;
-    }
+.stage{
+  width:90%;
+  max-width:420px;
+  height:45%;
+  background:radial-gradient(circle at bottom,#333,#000);
+  border-bottom:8px solid #b00;
+  border-radius:20px;
+  display:flex;
+  justify-content:center;
+  align-items:flex-end;
+  gap:40px;
+  position:relative;
+}
 
-    body {
-      overflow: hidden;
-      overscroll-behavior: none;
-      -webkit-touch-callout: none;
-      -webkit-user-select: none;
-      user-select: none;
-      touch-action: manipulation;
-    }
+.comic{
+  width:70px;
+  height:130px;
+  background:#fff;
+  border-radius:35px 35px 5px 5px;
+  transition:.12s;
+}
 
-    .app {
-      width: 100vw;
-      height: 100vh;   /* fallback */
-      height: 100dvh;  /* iOS modern */
-      display: flex;
-      flex-direction: column;
-      justify-content: space-between;
-      align-items: center;
-      padding:
-        calc(24px + env(safe-area-inset-top))
-        20px
-        calc(24px + env(safe-area-inset-bottom));
-      gap: 16px;
-    }
+.mic{
+  width:8px;
+  height:110px;
+  background:#777;
+  position:absolute;
+  bottom:0;
+  left:50%;
+  transform:translateX(-50%);
+}
 
-    #caption-box {
-      width: min(560px, 95vw);
-      min-height: 140px;
-      background: rgba(255,255,255,0.10);
-      border: 2px solid #333;
-      border-radius: 18px;
-      padding: 18px 16px;
-      text-align: center;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 1.2rem;
-      line-height: 1.7;
-      color: #0f0;
-    }
+#caption{
+  width:95%;
+  min-height:130px;
+  background:rgba(255,255,255,.08);
+  border-radius:16px;
+  padding:18px;
+  text-align:center;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  color:#0f0;
+  font-size:1.2rem;
+}
 
-    .stage {
-      width: min(420px, 90vw);
-      height: 42dvh;
-      max-height: 380px;
-      background: radial-gradient(circle at bottom, #333, #000);
-      border-bottom: 8px solid #b00;
-      border-radius: 22px;
-      display: flex;
-      justify-content: center;
-      align-items: flex-end;
-      gap: 44px;
-      position: relative;
-      box-shadow: 0 0 60px rgba(0,0,0,0.6) inset;
-    }
-
-    .comic {
-      width: 74px;
-      height: 138px;
-      background: #fff;
-      border-radius: 38px 38px 8px 8px;
-      transform: translateY(0) scale(1);
-      transition: transform 0.12s ease;
-      will-change: transform;
-      box-shadow: 0 14px 30px rgba(0,0,0,0.35);
-    }
-
-    .mic {
-      width: 8px;
-      height: 112px;
-      background: #777;
-      position: absolute;
-      bottom: 0;
-      left: 50%;
-      transform: translateX(-50%);
-      z-index: 10;
-      border-radius: 4px;
-    }
-
-    #gen-btn {
-      width: min(560px, 80vw);
-      padding: 20px 18px;
-      font-size: 18px;
-      font-weight: 900;
-      border: none;
-      border-radius: 999px;
-      background: #d2b48c;
-      color: #1a0a00;
-      box-shadow: 0 6px 0 #5d2e0c;
-      cursor: pointer;
-      touch-action: manipulation;
-    }
-    #gen-btn:active { transform: translateY(4px); box-shadow: 0 2px 0 #5d2e0c; }
-    #gen-btn:disabled { background: #555; color: #888; box-shadow: none; cursor: not-allowed; }
-
-    /* ちょい見栄え：行頭の A/B を太く */
-    .strong { font-weight: 800; }
-  </style>
+button{
+  width:80%;
+  padding:22px;
+  border-radius:50px;
+  border:none;
+  font-size:18px;
+  font-weight:bold;
+  background:#d2b48c;
+  box-shadow:0 6px 0 #5d2e0c;
+}
+button:active{
+  transform:translateY(4px);
+  box-shadow:0 2px 0 #5d2e0c;
+}
+</style>
 </head>
 
 <body>
-  <div class="app">
-    <div id="caption-box">ボタンを押すと、AIが新ネタを考え始めます</div>
 
-    <div class="stage" aria-label="漫才ステージ">
-      <div id="ai-1" class="comic" aria-label="ボケ A"></div>
-      <div class="mic" aria-hidden="true"></div>
-      <div id="ai-2" class="comic" aria-label="ツッコミ B"></div>
-    </div>
+<div id="caption">ボタンを押すとAIがネタ生成します</div>
 
-    <button id="gen-btn" type="button">新ネタを生成する</button>
-  </div>
+<div class="stage">
+<div id="a" class="comic"></div>
+<div class="mic"></div>
+<div id="b" class="comic"></div>
+</div>
 
-  <script>
-    // ===== ここは必要なら変える（フロント内の指示） =====
-    const PROMPT =
-      "あなたは日本一の漫才師です。ボケ(A)とツッコミ(B)の2人組による爆笑漫才を書いてください。ルール：1.必ず「A：」「B：」という形式で交互に話すこと。2.最後は必ず「もうええわ！」で締めること。3.文字数は短めでテンポ重視。";
+<button onclick="go()">新ネタを生成する</button>
 
-    // ===== 以下は基本いじらなくてOK =====
-    const box = document.getElementById('caption-box');
-    const btn = document.getElementById('gen-btn');
+<script>
 
-    let isPlaying = false;
-    let timerIds = [];
+const PROMPT =
+"あなたは日本一の漫才師です。AとBの掛け合いで短い漫才を書いてください。必ずA: B:形式で最後は『もうええわ！』で終わる。";
 
-    function clearTimers() {
-      timerIds.forEach(id => clearTimeout(id));
-      timerIds = [];
-    }
+async function go(){
 
-    function setCaption(text) {
-      box.textContent = text;
-    }
+document.getElementById("caption").innerText="ネタ生成中...";
 
-    function bounce(id) {
-      const el = document.getElementById(id);
-      el.style.transform = "translateY(-18px) scale(1.05)";
-      const t = setTimeout(() => {
-        el.style.transform = "translateY(0) scale(1)";
-      }, 180);
-      timerIds.push(t);
-    }
+try{
 
-    async function generateManzai() {
-      if (isPlaying) return;
+// ★安全版：自分のVercel APIを叩く
+const r = await fetch("/api/manzai",{
+method:"POST",
+headers:{ "Content-Type":"application/json" },
+body:JSON.stringify({ prompt:PROMPT })
+});
 
-      isPlaying = true;
-      btn.disabled = true;
-      clearTimers();
-      setCaption("ネタを構築中...");
+const data = await r.json();
 
-      try {
-        // ★安全版：ブラウザから直接Geminiへ行かず、自分の /api/manzai を叩く
-        const response = await fetch("/api/manzai", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ prompt: PROMPT })
-        });
+const text =
+data?.candidates?.[0]?.content?.parts?.[0]?.text;
 
-        if (!response.ok) {
-          const t = await response.text().catch(() => "");
-          throw new Error(`HTTP ${response.status} ${response.statusText} ${t}`.trim());
-        }
+if(!text) throw "AI返答なし";
 
-        const data = await response.json();
+play(text);
 
-        // Vercel側が返したエラー（Gemini error をそのまま返してる場合）
-        if (data?.error?.message) throw new Error(data.error.message);
-        if (typeof data?.error === "string") throw new Error(data.error);
+}catch(e){
+document.getElementById("caption").innerText="エラー：API通信失敗";
+console.error(e);
+}
 
-        const fullText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-        if (!fullText || typeof fullText !== "string") {
-          throw new Error("AIの返答を取得できませんでした。/api/manzai の実装と環境変数を確認してください。");
-        }
+}
 
-        // セリフ行だけ抽出（A: / A： / B: / B：）
-        const scriptLines = fullText
-          .split("\n")
-          .map(s => s.trim())
-          .filter(line => /^[AB][：:]/.test(line));
+function play(t){
 
-        if (!scriptLines.length) {
-          setCaption(fullText.slice(0, 160) + (fullText.length > 160 ? "…" : ""));
-          isPlaying = false;
-          btn.disabled = false;
-          return;
-        }
+const lines =
+t.split("\n").filter(x=>/^[AB][:：]/.test(x));
 
-        playManzai(scriptLines);
+let i=0;
 
-      } catch (err) {
-        console.error(err);
-        setCaption("エラー：/api/manzai が動いていないか、サーバー側のGEMINI_KEY未設定です。");
-        isPlaying = false;
-        btn.disabled = false;
-      }
-    }
+function next(){
 
-    function playManzai(lines) {
-      let i = 0;
+if(i>=lines.length) return;
 
-      const showNextLine = () => {
-        if (i < lines.length) {
-          const line = lines[i];
-          setCaption(line);
+const line=lines[i];
+document.getElementById("caption").innerText=line;
 
-          const targetId = line.startsWith("A") ? "ai-1" : "ai-2";
-          bounce(targetId);
+const id=line.startsWith("A")?"a":"b";
+const el=document.getElementById(id);
 
-          i++;
-          const t = setTimeout(showNextLine, 2200);
-          timerIds.push(t);
-        } else {
-          isPlaying = false;
-          btn.disabled = false;
-        }
-      };
+el.style.transform="translateY(-20px)";
+setTimeout(()=>el.style.transform="translateY(0)",200);
 
-      showNextLine();
-    }
+i++;
+setTimeout(next,2100);
+}
 
-    btn.addEventListener("click", generateManzai);
-  </script>
+next();
+}
+
+</script>
+
 </body>
 </html>
