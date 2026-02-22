@@ -2,36 +2,51 @@ export default async function handler(req, res) {
 
 try {
 
-if(req.method!=="POST")
-return res.status(405).json({error:"POST only"});
+if (req.method !== "POST") {
+return res.status(405).json({ error: "POST only" });
+}
 
-const body = typeof req.body==="string"
-? JSON.parse(req.body)
-: req.body || {};
+// bodyを確実に読む（Vercel対策）
+let body = req.body;
+if (!body || typeof body === "string") {
+try { body = JSON.parse(body || "{}"); }
+catch { body = {}; }
+}
 
 const prompt = body.prompt;
+if (!prompt) {
+return res.status(400).json({ error: "prompt missing" });
+}
 
-if(!prompt)
-return res.status(400).json({error:"prompt missing"});
+// ★ここが最新版モデル（重要）
+const MODEL = "gemini-1.5-flash-latest";
 
+// Gemini API呼び出し
 const r = await fetch(
-"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key="+process.env.GEMINI_KEY,
+`https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${process.env.GEMINI_KEY}`,
 {
-method:"POST",
-headers:{ "Content-Type":"application/json" },
-body:JSON.stringify({
-contents:[{parts:[{text:prompt}]}]
+method: "POST",
+headers: { "Content-Type": "application/json" },
+body: JSON.stringify({
+contents: [{ parts: [{ text: prompt }] }]
 })
 }
 );
 
-const data = await r.json();
-res.status(200).json(data);
+// JSON安全取得
+const text = await r.text();
+let data;
+try { data = JSON.parse(text); }
+catch {
+return res.status(500).json({ error: "Gemini returned non-JSON", raw:text });
+}
 
-}catch(e){
+return res.status(200).json(data);
 
-console.log(e);
-res.status(500).json({error:String(e)});
+} catch (e) {
+
+console.log("ERROR:", e);
+return res.status(500).json({ error:String(e) });
 
 }
 
